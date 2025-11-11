@@ -1,47 +1,89 @@
 import javax.swing.*;
 import javax.swing.event.ChangeEvent;
+import javax.swing.plaf.basic.BasicSliderUI;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
 import javax.sound.sampled.*;
 
 import com.formdev.flatlaf.FlatDarkLaf;
-import java.awt.geom.*;
-import java.awt.GradientPaint;
-import java.awt.RadialGradientPaint;
+
+// Custom JPanel with alpha transparency support for animations
+class AlphaPanel extends JPanel {
+    private float alpha = 1f;
+
+    public AlphaPanel(LayoutManager layout) {
+        super(layout);
+        setOpaque(false);
+    }
+
+    public void setAlpha(float alpha) {
+        this.alpha = Math.max(0f, Math.min(1f, alpha));
+    }
+
+    public float getAlpha() {
+        return alpha;
+    }
+
+    @Override
+    protected void paintComponent(Graphics g) {
+        Graphics2D g2 = (Graphics2D) g;
+        Composite oldComposite = g2.getComposite();
+        g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));
+        super.paintComponent(g);
+        g2.setComposite(oldComposite);
+    }
+
+    @Override
+    public void paintChildren(Graphics g) {
+        Graphics2D g2 = (Graphics2D) g;
+        Composite oldComposite = g2.getComposite();
+        g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));
+        super.paintChildren(g);
+        g2.setComposite(oldComposite);
+    }
+}
 
 public class MusicMoodApp extends JFrame {
 
     private CardLayout cardLayout;
-    private JPanel mainPanel, moodPanel, musicPanel;
+    private JPanel mainPanel;
+    private AlphaPanel moodPanel, musicPanel;
+
     private Clip clip;
     private FloatControl volumeControl;
     private boolean isPaused = false;
     private long pausedPosition = 0;
+
     private String selectedMood;
     private JList<String> songList;
     private DefaultListModel<String> listModel;
     private File[] currentFiles;
     private int currentIndex = -1;
 
-    private ControlButton playBtn, pauseBtn, stopBtn, nextBtn, prevBtn, backBtn;
+    private ControlButton playBtn, stopBtn, nextBtn, prevBtn, backBtn;
     private JLabel nowPlayingLabel;
     private JSlider volumeSlider;
+    private JSlider progressSlider;
+    private javax.swing.Timer progressTimer;
+    private boolean seekingProgress = false;
+    private JLabel currentTimeLabel;
+    private JLabel totalTimeLabel;
+    private AlphaPanel songListPanel;
 
-    private boolean isPlaying = false;
+    private boolean isPlaying = false; // true = clip is playing (not paused / not stopped)
 
     private Clip uiClickClip;
     private Font customFont;
+    private boolean isFullscreen = false;
 
     private final String MUSIC_PATH = "music/";
     private final String SOUND_PATH = "sounds/click.wav";
+    private final String ICON_PATH = "assets/icons/";
 
     public static void main(String[] args) {
         FlatDarkLaf.setup();
-        SwingUtilities.invokeLater(() -> {
-            MusicMoodApp app = new MusicMoodApp();
-            app.startFadeIn();
-        });
+        SwingUtilities.invokeLater(MusicMoodApp::new);
     }
 
     public MusicMoodApp() {
@@ -49,10 +91,14 @@ public class MusicMoodApp extends JFrame {
         setSize(1000, 600);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
-        setResizable(false);
+        setResizable(true);  // Enable resizing
+        setExtendedState(JFrame.NORMAL);  // Allow fullscreen support
 
         cardLayout = new CardLayout();
         mainPanel = new JPanel(cardLayout);
+
+        loadClickSound();
+        loadCustomFont();
 
         initMoodPanel();
         initMusicPanel();
@@ -60,77 +106,82 @@ public class MusicMoodApp extends JFrame {
         mainPanel.add(moodPanel, "mood");
         mainPanel.add(musicPanel, "music");
         add(mainPanel);
+
         setVisible(true);
-
-        loadClickSound();
-        loadCustomFontAndApply();
-    }
-
-    // ===== window fade-in =====
-    private void startFadeIn() {
-        try {
-            setOpacity(0f);
-        } catch (Exception e) {
-            return;
-        }
-
-        int durationMs = 1500;
-        int steps = 30;
-        int delay = durationMs / steps;
-
-        Timer timer = new Timer(delay, null);
-        timer.addActionListener(e -> {
-            float current = getOpacity();
-            float next = current + (1.0f / steps);
-            if (next >= 1f) {
-                setOpacity(1f);
-                timer.stop();
-            } else {
-                setOpacity(next);
+        
+        // Fade in the mood panel on startup
+        SwingUtilities.invokeLater(() -> animateMoodPanelIn());
+        
+        // Add keyboard shortcut for fullscreen (F11)
+        addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_F11) {
+                    toggleFullscreen();
+                }
             }
         });
-        timer.start();
+        setFocusable(true);
     }
 
-    // ===== font load =====
-    private void loadCustomFontAndApply() {
+    private void toggleFullscreen() {
+        isFullscreen = !isFullscreen;
+        
+        if (isFullscreen) {
+            // Enter fullscreen mode
+            setExtendedState(JFrame.MAXIMIZED_BOTH);
+            dispose();
+            setUndecorated(true);
+            setVisible(true);
+            setExtendedState(JFrame.NORMAL);
+        } else {
+            // Exit fullscreen mode
+            dispose();
+            setUndecorated(false);
+            setVisible(true);
+            setExtendedState(JFrame.NORMAL);
+            setLocationRelativeTo(null);
+        }
+    }
+
+    // ================= FONT =================
+
+    private void loadCustomFont() {
         try {
-            File fontFile = new File("fonts/Headlines-BoldItalic.otf");
+            File fontFile = new File("fonts/NewFont.ttf");
             if (fontFile.exists()) {
-                customFont = Font.createFont(Font.TRUETYPE_FONT, fontFile).deriveFont(Font.PLAIN, 22f);
+                customFont = Font.createFont(Font.TRUETYPE_FONT, fontFile);
                 GraphicsEnvironment.getLocalGraphicsEnvironment().registerFont(customFont);
-                SwingUtilities.invokeLater(() -> applyFontRecursively(this.getContentPane(), customFont));
             } else {
-                System.out.println("Font file not found: " + fontFile.getPath());
+                System.out.println("Font not found: " + fontFile.getPath());
+                customFont = new Font("SansSerif", Font.PLAIN, 20);
             }
-        } catch (Exception ex) {
-            System.out.println("Failed to apply font: " + ex.getMessage());
+        } catch (Exception e) {
+            System.out.println("Failed to load font: " + e.getMessage());
+            customFont = new Font("SansSerif", Font.PLAIN, 20);
         }
     }
 
-    private void applyFontRecursively(Component component, Font font) {
-        component.setFont(font);
-        if (component instanceof Container) {
-            for (Component child : ((Container) component).getComponents()) {
-                applyFontRecursively(child, font);
-            }
-        }
+    private Font fPlain(float size) {
+        return (customFont != null ? customFont.deriveFont(Font.PLAIN, size)
+                                   : new Font("SansSerif", Font.PLAIN, (int) size));
     }
 
-    // ===== click sound =====
+    private Font fBold(float size) {
+        return (customFont != null ? customFont.deriveFont(Font.BOLD, size)
+                                   : new Font("SansSerif", Font.BOLD, (int) size));
+    }
+
+    // ================= CLICK SOUND =================
+
     private void loadClickSound() {
         try {
             File soundFile = new File(SOUND_PATH);
-            if (!soundFile.exists()) {
-                System.out.println("click.wav not found at " + SOUND_PATH);
-                return;
-            }
+            if (!soundFile.exists()) return;
             AudioInputStream ais = AudioSystem.getAudioInputStream(soundFile);
             uiClickClip = AudioSystem.getClip();
             uiClickClip.open(ais);
-        } catch (Exception ex) {
-            System.out.println("Failed to load click sound: " + ex.getMessage());
-        }
+        } catch (Exception ignored) {}
     }
 
     private void playClickSound() {
@@ -140,49 +191,30 @@ public class MusicMoodApp extends JFrame {
         uiClickClip.start();
     }
 
-    // ===== MOOD PANEL =====
+    // ================= MOOD PANEL =================
+
     private void initMoodPanel() {
-        moodPanel = new JPanel() {
+        moodPanel = new AlphaPanel(new BorderLayout()) {
             @Override
             protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g;
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                int w = getWidth(), h = getHeight();
+                GradientPaint gp = new GradientPaint(0, 0, new Color(80, 80, 80),
+                                                     w, h, new Color(10, 10, 10));
+                g2.setPaint(gp);
+                g2.fillRect(0, 0, w, h);
                 super.paintComponent(g);
-                Graphics2D g2d = (Graphics2D) g.create();
-                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
-                int w = getWidth();
-                int h = getHeight();
-
-                GradientPaint baseGradient = new GradientPaint(
-                        0, 0, new Color(80, 80, 80),
-                        w, h, new Color(10, 10, 10)
-                );
-                g2d.setPaint(baseGradient);
-                g2d.fillRect(0, 0, w, h);
-
-                RadialGradientPaint glow = new RadialGradientPaint(
-                        new Point(w / 2, h / 3),
-                        w / 1.2f,
-                        new float[]{0f, 1f},
-                        new Color[]{new Color(255, 255, 255, 35), new Color(0, 0, 0, 0)}
-                );
-                g2d.setPaint(glow);
-                g2d.fillRect(0, 0, w, h);
-
-                g2d.setColor(new Color(255, 255, 255, 12));
-                g2d.fillRect(0, 0, w, h);
-
-                g2d.dispose();
             }
         };
-        moodPanel.setLayout(new BorderLayout());
 
         JLabel title = new JLabel("Music Mood App", SwingConstants.CENTER);
         title.setForeground(Color.WHITE);
-        title.setFont(new Font("SansSerif", Font.BOLD, 36));
+        title.setFont(fBold(48f));
 
         JLabel subtitle = new JLabel("Choose your mood", SwingConstants.CENTER);
         subtitle.setForeground(new Color(220, 220, 220));
-        subtitle.setFont(new Font("SansSerif", Font.PLAIN, 20));
+        subtitle.setFont(fPlain(26f));
 
         JPanel top = new JPanel(new GridLayout(2, 1));
         top.setOpaque(false);
@@ -199,525 +231,635 @@ public class MusicMoodApp extends JFrame {
         grid.add(createMoodButton("Chill", new Color(90, 240, 210)));
         grid.add(createMoodButton("Energetic", new Color(255, 120, 90)));
         grid.add(createMoodButton("Love", new Color(255, 80, 160)));
+        grid.add(createMoodButton("Focus", new Color(130, 220, 150)));
 
         moodPanel.add(top, BorderLayout.NORTH);
         moodPanel.add(grid, BorderLayout.CENTER);
-    }
-
-    // ===== MUSIC PANEL =====
-    private void initMusicPanel() {
-        musicPanel = new JPanel(new BorderLayout()) {
+        
+        // Add resize listener to update button font sizes dynamically
+        moodPanel.addComponentListener(new java.awt.event.ComponentAdapter() {
             @Override
-            protected void paintComponent(Graphics g) {
-                super.paintComponent(g);
-                Graphics2D g2d = (Graphics2D) g.create();
-                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
-                int w = getWidth();
-                int h = getHeight();
-
-                GradientPaint baseGradient = new GradientPaint(
-                        0, 0, new Color(80, 80, 80),
-                        w, h, new Color(10, 10, 10)
-                );
-                g2d.setPaint(baseGradient);
-                g2d.fillRect(0, 0, w, h);
-
-                RadialGradientPaint glow = new RadialGradientPaint(
-                        new Point(w / 2, h / 3),
-                        w / 1.2f,
-                        new float[]{0f, 1f},
-                        new Color[]{new Color(255, 255, 255, 35), new Color(0, 0, 0, 0)}
-                );
-                g2d.setPaint(glow);
-                g2d.fillRect(0, 0, w, h);
-
-                g2d.setColor(new Color(255, 255, 255, 12));
-                g2d.fillRect(0, 0, w, h);
-
-                g2d.dispose();
+            public void componentResized(java.awt.event.ComponentEvent e) {
+                updateMoodButtonFonts(grid);
             }
-        };
-
-        JLabel label = new JLabel("Select a song", SwingConstants.CENTER);
-        label.setForeground(Color.WHITE);
-        label.setFont(new Font("SansSerif", Font.BOLD, 26));
-        label.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
-
-        listModel = new DefaultListModel<>();
-        songList = new JList<>(listModel);
-        songList.setBackground(new Color(20, 20, 25));
-        songList.setForeground(Color.WHITE);
-        songList.setSelectionBackground(new Color(0x1DB954));
-        songList.setSelectionForeground(Color.BLACK);
-        songList.setFont(new Font("SansSerif", Font.PLAIN, 18));
-
-        JScrollPane scrollPane = new JScrollPane(songList);
-        scrollPane.setBorder(BorderFactory.createEmptyBorder(10, 40, 10, 40));
-
-        JPanel bottomBar = new JPanel(new BorderLayout());
-        bottomBar.setOpaque(false);
-        bottomBar.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16));
-
-        JPanel controls = new JPanel();
-        controls.setOpaque(false);
-
-        prevBtn = createControlButton(ControlButton.Type.PREV);
-        playBtn = createControlButton(ControlButton.Type.PLAY_PAUSE);
-        pauseBtn = null; // playBtn will toggle its icon
-        stopBtn = createControlButton(ControlButton.Type.STOP);
-        nextBtn = createControlButton(ControlButton.Type.NEXT);
-        backBtn = createControlButton(ControlButton.Type.BACK);
-
-        controls.add(prevBtn);
-        controls.add(playBtn);
-        controls.add(stopBtn);
-        controls.add(nextBtn);
-        controls.add(backBtn);
-
-        nowPlayingLabel = new JLabel("Now playing: -");
-        nowPlayingLabel.setForeground(Color.WHITE);
-        nowPlayingLabel.setFont(new Font("SansSerif", Font.PLAIN, 16));
-
-        JPanel centerInfo = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        centerInfo.setOpaque(false);
-        centerInfo.add(nowPlayingLabel);
-
-        JLabel volLabel = new JLabel("Vol");
-        volLabel.setForeground(Color.WHITE);
-        volLabel.setFont(new Font("SansSerif", Font.PLAIN, 14));
-
-        volumeSlider = new JSlider(0, 100, 80);
-        volumeSlider.setPreferredSize(new Dimension(220, 22));
-        volumeSlider.setOpaque(false);
-        final boolean[] hovering = {false};
-
-        volumeSlider.addMouseListener(new MouseAdapter() {
-            @Override public void mouseEntered(MouseEvent e) { hovering[0] = true; volumeSlider.repaint(); }
-            @Override public void mouseExited(MouseEvent e) { hovering[0] = false; volumeSlider.repaint(); }
-        });
-
-        volumeSlider.setUI(new javax.swing.plaf.basic.BasicSliderUI(volumeSlider) {
-            @Override
-            public void paintTrack(Graphics g) {
-                Graphics2D g2d = (Graphics2D) g;
-                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                int cy = trackRect.y + (trackRect.height / 2) - 3;
-                int cw = trackRect.width;
-                int ch = 8;
-                g2d.setColor(new Color(40, 40, 40));
-                g2d.fillRoundRect(trackRect.x, cy, cw, ch, ch, ch);
-                Color fill = hovering[0] ? new Color(40, 255, 120) : new Color(30, 215, 96);
-                int filled = (int) (cw * (slider.getValue() / 100.0));
-                g2d.setColor(fill);
-                g2d.fillRoundRect(trackRect.x, cy, filled, ch, ch, ch);
-                if (hovering[0]) {
-                    g2d.setColor(new Color(40, 255, 120, 80));
-                    g2d.setStroke(new BasicStroke(6f));
-                    g2d.drawRoundRect(trackRect.x, cy, filled, ch, ch, ch);
-                }
-            }
-
-            @Override
-            public void paintThumb(Graphics g) {
-                Graphics2D g2d = (Graphics2D) g.create();
-                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                int size = 16;
-                int x = thumbRect.x + (thumbRect.width - size) / 2;
-                int y = thumbRect.y + (thumbRect.height - size) / 2;
-                Color thumbColor = hovering[0] ? new Color(40, 255, 120) : new Color(30, 215, 96);
-                g2d.setColor(thumbColor);
-                g2d.fillOval(x, y, size, size);
-                if (hovering[0]) {
-                    g2d.setColor(new Color(40, 255, 120, 80));
-                    g2d.setStroke(new BasicStroke(2f));
-                    g2d.drawOval(x - 2, y - 2, size + 4, size + 4);
-                }
-                g2d.dispose();
-            }
-        });
-
-        volumeSlider.addChangeListener((ChangeEvent e) -> {
-            updateVolume();
-            volumeSlider.repaint();
-        });
-
-        JPanel rightPanel = new JPanel();
-        rightPanel.setOpaque(false);
-        rightPanel.add(volLabel);
-        rightPanel.add(volumeSlider);
-
-        bottomBar.add(controls, BorderLayout.WEST);
-        bottomBar.add(centerInfo, BorderLayout.CENTER);
-        bottomBar.add(rightPanel, BorderLayout.EAST);
-
-        musicPanel.add(label, BorderLayout.NORTH);
-        musicPanel.add(scrollPane, BorderLayout.CENTER);
-        musicPanel.add(bottomBar, BorderLayout.SOUTH);
-
-        prevBtn.addActionListener(e -> {
-            playClickSound();
-            playPrevious();
-        });
-        playBtn.addActionListener(e -> {
-            playClickSound();
-            if (!isPlaying) {
-                playSelectedFromList();
-            } else {
-                pauseOrResume();
-            }
-        });
-        stopBtn.addActionListener(e -> {
-            playClickSound();
-            stopMusic();
-        });
-        nextBtn.addActionListener(e -> {
-            playClickSound();
-            playNext();
-        });
-        backBtn.addActionListener(e -> {
-            playClickSound();
-            stopMusic();
-            cardLayout.show(mainPanel, "mood");
         });
     }
 
-    // ===== custom mood button class =====
+    private void updateMoodButtonFonts(JPanel grid) {
+        // Calculate responsive font size based on mood panel height
+        float baseFontSize = Math.max(16f, Math.min(40f, moodPanel.getHeight() / 12f));
+        
+        for (Component comp : grid.getComponents()) {
+            if (comp instanceof MoodButton) {
+                ((MoodButton) comp).setFont(fBold(baseFontSize));
+            }
+        }
+    }
+
     private MoodButton createMoodButton(String text, Color baseColor) {
         MoodButton btn = new MoodButton(text, baseColor);
+        // Calculate responsive font size based on window height
+        float baseFontSize = Math.max(16f, Math.min(40f, getHeight() / 12f));
+        btn.setFont(fBold(baseFontSize));
         btn.addActionListener(e -> {
             playClickSound();
-            openMood(text.toLowerCase());
+            openMood(text.toLowerCase()); // "happy" -> folder music/happy
         });
         return btn;
     }
 
     private class MoodButton extends JButton {
-        private float scale = 1.0f;
-        private float glowAlpha = 0.0f;
-        private Timer glowTimer;
         private final Color baseColor;
+        private float glow = 0f;
+        private Timer timer;
+        private float pressScale = 1f;
+        private Timer pressTimer;
 
         MoodButton(String text, Color baseColor) {
             super(text);
             this.baseColor = baseColor;
             setFocusPainted(false);
-            setBorderPainted(false);
             setContentAreaFilled(false);
             setOpaque(false);
             setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            setForeground(Color.BLACK);
 
             addMouseListener(new MouseAdapter() {
-                @Override
-                public void mouseEntered(MouseEvent e) {
-                    animateGlow(true);
-                }
-
-                @Override
-                public void mouseExited(MouseEvent e) {
-                    animateGlow(false);
-                }
-
-                @Override
-                public void mousePressed(MouseEvent e) {
-                    animateClick(true);
-                }
-
-                @Override
-                public void mouseReleased(MouseEvent e) {
-                    animateClick(false);
-                }
+                @Override public void mouseEntered(MouseEvent e) { startGlow(true); }
+                @Override public void mouseExited(MouseEvent e) { startGlow(false); }
+                @Override public void mousePressed(MouseEvent e) { animatePressDown(); }
+                @Override public void mouseReleased(MouseEvent e) { animatePressUp(); }
             });
         }
 
         @Override
         protected void paintComponent(Graphics g) {
-            Graphics2D g2d = (Graphics2D) g.create();
-            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            Graphics2D g2 = (Graphics2D) g;
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            int w = getWidth(), h = getHeight();
 
-            int w = getWidth();
-            int h = getHeight();
+            // Apply press scale
+            int scaledW = (int) (w * pressScale);
+            int scaledH = (int) (h * pressScale);
+            int x = (w - scaledW) / 2;
+            int y = (h - scaledH) / 2;
 
-            int newW = (int) (w * scale);
-            int newH = (int) (h * scale);
-            int x = (w - newW) / 2;
-            int y = (h - newH) / 2;
-            g2d.translate(x, y);
-            g2d.scale(scale, scale);
+            GradientPaint gp = new GradientPaint(x, y, baseColor.brighter(), x, y + scaledH, baseColor.darker());
+            g2.setPaint(gp);
+            g2.fillRoundRect(x, y, scaledW, scaledH, 40, 40);
 
-            g2d.setColor(new Color(0, 0, 0, 90));
-            g2d.fillRoundRect(4, 6, w - 8, h - 8, 40, 40);
-
-            GradientPaint gradient = new GradientPaint(
-                    0, 0, baseColor.brighter(),
-                    0, h, baseColor.darker()
-            );
-            g2d.setPaint(gradient);
-            g2d.fillRoundRect(0, 0, w - 6, h - 6, 40, 40);
-
-            GradientPaint highlight = new GradientPaint(
-                    0, 0, new Color(255, 255, 255, 75),
-                    0, h / 2, new Color(255, 255, 255, 0)
-            );
-            g2d.setPaint(highlight);
-            g2d.fillRoundRect(0, 0, w - 6, h / 2, 40, 40);
-
-            if (glowAlpha > 0f) {
-                g2d.setColor(new Color(
-                        baseColor.getRed(),
-                        baseColor.getGreen(),
-                        baseColor.getBlue(),
-                        (int) (120 * glowAlpha)
-                ));
-                g2d.setStroke(new BasicStroke(5f));
-                g2d.drawRoundRect(2, 2, w - 10, h - 10, 40, 40);
+            if (glow > 0f) {
+                g2.setColor(new Color(baseColor.getRed(), baseColor.getGreen(), baseColor.getBlue(), (int) (120 * glow)));
+                g2.setStroke(new BasicStroke(4f * glow));
+                g2.drawRoundRect(x - 2, y - 2, scaledW + 4, scaledH + 4, 40, 40);
             }
 
-            g2d.setColor(new Color(255, 255, 255, 50));
-            g2d.setStroke(new BasicStroke(2f));
-            g2d.drawRoundRect(0, 0, w - 6, h - 6, 40, 40);
-
-            Font f = customFont != null ? customFont.deriveFont(Font.BOLD, 22f) : getFont().deriveFont(Font.BOLD, 22f);
-            g2d.setFont(f);
-            FontMetrics fm = g2d.getFontMetrics();
-            int textWidth = fm.stringWidth(getText());
-            int textHeight = fm.getAscent();
-            g2d.setColor(Color.BLACK);
-            g2d.drawString(getText(), (w - textWidth) / 2, (h + textHeight / 2) / 2);
-
-            g2d.dispose();
+            g2.setColor(Color.BLACK);
+            FontMetrics fm = g2.getFontMetrics(getFont());
+            int tw = fm.stringWidth(getText());
+            int th = fm.getAscent();
+            g2.drawString(getText(), (w - tw) / 2, (h + th / 2) / 2);
         }
 
-        void animateClick(boolean pressed) {
-            float target = pressed ? 0.93f : 1.0f;
-            new Thread(() -> {
-                try {
-                    for (int i = 0; i < 5; i++) {
-                        scale += (target - scale) * 0.5f;
-                        repaint();
-                        Thread.sleep(15);
-                    }
-                    scale = target;
-                    repaint();
-                } catch (InterruptedException ignored) {}
-            }).start();
+        private void startGlow(boolean in) {
+            if (timer != null && timer.isRunning()) timer.stop();
+            timer = new Timer(15, e -> {
+                glow += in ? 0.08f : -0.08f;
+                if (glow < 0f) { glow = 0f; timer.stop(); }
+                if (glow > 1f) { glow = 1f; timer.stop(); }
+                repaint();
+            });
+            timer.start();
         }
 
-        void animateGlow(boolean hoverIn) {
-            if (glowTimer != null && glowTimer.isRunning()) glowTimer.stop();
-            glowTimer = new Timer(15, null);
-            glowTimer.addActionListener(e -> {
-                float target = hoverIn ? 1.0f : 0.0f;
-                glowAlpha += (target - glowAlpha) * 0.18f;
-                if (Math.abs(target - glowAlpha) < 0.02f) {
-                    glowAlpha = target;
-                    glowTimer.stop();
+        private void animatePressDown() {
+            if (pressTimer != null && pressTimer.isRunning()) pressTimer.stop();
+            pressTimer = new Timer(20, e -> {
+                pressScale -= 0.08f;
+                if (pressScale < 0.9f) {
+                    pressScale = 0.9f;
+                    pressTimer.stop();
                 }
                 repaint();
             });
-            glowTimer.start();
+            pressTimer.start();
+        }
+
+        private void animatePressUp() {
+            if (pressTimer != null && pressTimer.isRunning()) pressTimer.stop();
+            pressTimer = new Timer(20, e -> {
+                pressScale += 0.1f;
+                if (pressScale > 1f) {
+                    pressScale = 1f;
+                    pressTimer.stop();
+                }
+                repaint();
+            });
+            pressTimer.start();
         }
     }
 
-    // ===== custom control button class =====
+    // ================= MUSIC PANEL =================
+
+    private void initMusicPanel() {
+    musicPanel = new AlphaPanel(new BorderLayout()) {
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g;
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            int w = getWidth(), h = getHeight();
+            // Solid background for top and bottom areas
+            g2.setColor(new Color(100, 100, 100));
+            g2.fillRect(0, 0, w, h);
+            super.paintComponent(g);
+        }
+    };
+
+    JLabel label = new JLabel("Select a song", SwingConstants.CENTER);
+    label.setForeground(Color.WHITE);
+    label.setFont(fBold(48f));
+
+    listModel = new DefaultListModel<>();
+    songList = new JList<>(listModel);
+    songList.setBackground(new Color(25, 25, 30));
+    songList.setForeground(Color.WHITE);
+    songList.setSelectionBackground(new Color(0x1DB954));
+    songList.setSelectionForeground(Color.BLACK);
+    songList.setFont(fPlain(22f));
+
+    JScrollPane scrollPane = new JScrollPane(songList);
+    scrollPane.setBorder(BorderFactory.createEmptyBorder(10, 40, 10, 40));
+    scrollPane.setOpaque(false);
+    scrollPane.getViewport().setOpaque(false);
+
+    // Wrap scrollPane in an AlphaPanel for fade-in animation with gradient
+    songListPanel = new AlphaPanel(new BorderLayout()) {
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g;
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            int w = getWidth(), h = getHeight();
+            // Smooth gradient from light gray to dark gray
+            GradientPaint gp = new GradientPaint(0, 0, new Color(180, 180, 180),
+                                                 0, h, new Color(60, 60, 60));
+            g2.setPaint(gp);
+            g2.fillRect(0, 0, w, h);
+            super.paintComponent(g);
+        }
+    };
+    songListPanel.add(scrollPane, BorderLayout.CENTER);
+
+    // ==== bottom bar ====
+    JPanel bottom = new JPanel(new BorderLayout());
+    bottom.setOpaque(false);
+    bottom.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16));
+
+    // ==== control buttons ====
+    // increase the vertical gap so the icons sit lower and align with the center area
+    JPanel controls = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 30));
+    controls.setOpaque(false);
+
+    prevBtn = createControlButton(ControlButton.Type.PREV);
+    playBtn = createControlButton(ControlButton.Type.PLAY_PAUSE);
+    stopBtn = createControlButton(ControlButton.Type.STOP);
+    nextBtn = createControlButton(ControlButton.Type.NEXT);
+    backBtn = createControlButton(ControlButton.Type.BACK);
+
+    controls.add(prevBtn);
+    controls.add(playBtn);
+    controls.add(stopBtn);
+    controls.add(nextBtn);
+    controls.add(backBtn);
+
+    // ==== center section ====
+    nowPlayingLabel = new JLabel("Now playing: -");
+    nowPlayingLabel.setForeground(Color.WHITE);
+    nowPlayingLabel.setFont(fPlain(18f));
+    nowPlayingLabel.setPreferredSize(new Dimension(500, 36));
+    nowPlayingLabel.setMaximumSize(new Dimension(Short.MAX_VALUE, 36));
+    nowPlayingLabel.setHorizontalAlignment(SwingConstants.LEFT);
+    nowPlayingLabel.setVerticalAlignment(SwingConstants.CENTER);
+    nowPlayingLabel.setToolTipText("Currently playing song");
+
+    JLabel volLabel = new JLabel("Vol");
+    volLabel.setForeground(Color.WHITE);
+    volLabel.setFont(fPlain(18f));
+
+    volumeSlider = new JSlider(0, 100, 80);
+    volumeSlider.setPreferredSize(new Dimension(150, 22));
+    volumeSlider.setMaximumSize(new Dimension(150, 22));
+    volumeSlider.setMinimumSize(new Dimension(150, 22));
+    volumeSlider.setOpaque(false);
+
+    // ==== glowing slider ====
+    final boolean[] hovering = {false};
+    volumeSlider.addMouseListener(new MouseAdapter() {
+        @Override public void mouseEntered(MouseEvent e) { hovering[0] = true; volumeSlider.repaint(); }
+        @Override public void mouseExited(MouseEvent e) { hovering[0] = false; volumeSlider.repaint(); }
+    });
+
+    volumeSlider.setUI(new BasicSliderUI(volumeSlider) {
+        @Override
+        public void paintTrack(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g;
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            int cy = trackRect.y + (trackRect.height / 2) - 3;
+            int cw = trackRect.width;
+            int ch = 8;
+            g2.setColor(new Color(40, 40, 40));
+            g2.fillRoundRect(trackRect.x, cy, cw, ch, ch, ch);
+            int filled = (int) (cw * (slider.getValue() / 100.0));
+            Color fill = hovering[0] ? new Color(40, 255, 120) : new Color(30, 215, 96);
+            g2.setColor(fill);
+            g2.fillRoundRect(trackRect.x, cy, filled, ch, ch, ch);
+        }
+
+        @Override
+        public void paintThumb(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g;
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            int size = 16;
+            int x = thumbRect.x + (thumbRect.width - size) / 2;
+            int y = thumbRect.y + (thumbRect.height - size) / 2;
+            Color c = hovering[0] ? new Color(40, 255, 120) : new Color(30, 215, 96);
+            g2.setColor(c);
+            g2.fillOval(x, y, size, size);
+        }
+    });
+
+    volumeSlider.addChangeListener((ChangeEvent e) -> updateVolume());
+
+    // ====== progress / seek slider (centered) ======
+    progressSlider = new JSlider(0, 1000, 0); // use 0..1000 for smoothness
+    progressSlider.setPreferredSize(new Dimension(400, 8)); // Much smaller, just the track
+    progressSlider.setMaximumSize(new Dimension(400, 8));
+    progressSlider.setOpaque(false);
+    progressSlider.setFocusable(false);
+    progressSlider.setBorder(null); // Remove any border
+
+    // user interaction: mark seeking on press, perform seek on release
+    progressSlider.addMouseListener(new MouseAdapter() {
+        @Override public void mousePressed(MouseEvent e) { seekingProgress = true; }
+        @Override public void mouseReleased(MouseEvent e) {
+            seekingProgress = false;
+            // Seek for Clip-based playback (WAV)
+            if (clip != null && clip.isOpen() && clip.getMicrosecondLength() > 0) {
+                int val = progressSlider.getValue();
+                long newPos = (long) ((val / 1000.0) * clip.getMicrosecondLength());
+                try { clip.setMicrosecondPosition(newPos); } catch (Exception ignored) {}
+            }
+        }
+    });
+
+    progressSlider.addChangeListener((ChangeEvent e) -> {
+        if (seekingProgress) {
+            int v = progressSlider.getValue();
+            if (clip != null && clip.isOpen() && clip.getMicrosecondLength() > 0) {
+                long len = clip.getMicrosecondLength();
+                long pos = (long) ((v / 1000.0) * len);
+                progressSlider.setToolTipText(formatTime(pos) + " / " + formatTime(len));
+            }
+        }
+    });
+
+    // Custom UI for the progress slider with gradient and modern look
+    progressSlider.setUI(new BasicSliderUI(progressSlider) {
+        @Override
+        public void paintTrack(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g;
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            int cy = trackRect.y + (trackRect.height / 2) - 4;
+            int cw = trackRect.width;
+            int ch = 8;
+            
+            // Background track (dark)
+            g2.setColor(new Color(40, 40, 40));
+            g2.fillRoundRect(trackRect.x, cy, cw, ch, ch, ch);
+            
+            // Gradient fill for played portion
+            int filled = (int) (cw * (slider.getValue() / 1000.0));
+            GradientPaint gp = new GradientPaint(
+                trackRect.x, cy, new Color(30, 215, 96),
+                trackRect.x + filled, cy, new Color(0, 180, 70)
+            );
+            g2.setPaint(gp);
+            g2.fillRoundRect(trackRect.x, cy, filled, ch, ch, ch);
+        }
+
+        @Override
+        public void paintThumb(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g;
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            int size = 18;
+            int x = thumbRect.x + (thumbRect.width - size) / 2;
+            int y = thumbRect.y + (thumbRect.height - size) / 2;
+            
+            // Gradient thumb
+            GradientPaint thumbGradient = new GradientPaint(
+                x, y, new Color(30, 215, 96),
+                x + size, y + size, new Color(0, 180, 70)
+            );
+            g2.setPaint(thumbGradient);
+            g2.fillOval(x, y, size, size);
+            
+            // Glow effect
+            g2.setColor(new Color(30, 215, 96, 100));
+            g2.setStroke(new BasicStroke(2f));
+            g2.drawOval(x - 2, y - 2, size + 4, size + 4);
+        }
+    });
+
+    // Timer display labels for current and total time
+    currentTimeLabel = new JLabel("0:00");
+    currentTimeLabel.setForeground(new Color(200, 200, 200));
+    currentTimeLabel.setFont(fPlain(14f));
+    currentTimeLabel.setPreferredSize(new Dimension(60, 24));
+    currentTimeLabel.setHorizontalAlignment(SwingConstants.RIGHT);
+    currentTimeLabel.setVerticalAlignment(SwingConstants.CENTER);
+    
+    totalTimeLabel = new JLabel("0:00");
+    totalTimeLabel.setForeground(new Color(150, 150, 150));
+    totalTimeLabel.setFont(fPlain(14f));
+    totalTimeLabel.setPreferredSize(new Dimension(60, 24));
+    totalTimeLabel.setHorizontalAlignment(SwingConstants.LEFT);
+    totalTimeLabel.setVerticalAlignment(SwingConstants.CENTER);
+
+    // ==== progress bar container with timer ====
+    JPanel progressContainer = new JPanel();
+    progressContainer.setLayout(new BorderLayout(16, 0));
+    progressContainer.setOpaque(false);
+    progressContainer.setPreferredSize(new Dimension(550, 40));
+    progressContainer.add(currentTimeLabel, BorderLayout.WEST);
+    progressContainer.add(progressSlider, BorderLayout.CENTER);
+    progressContainer.add(totalTimeLabel, BorderLayout.EAST);
+    progressContainer.setBorder(BorderFactory.createEmptyBorder(8, 0, 8, 0));
+
+    // ==== fixed alignment ====
+    JPanel centerPanel = new JPanel(new BorderLayout());
+centerPanel.setOpaque(false);
+
+// "Now playing" – lower it slightly so it centers with the controls and volume box
+JPanel leftInfo = new JPanel(new FlowLayout(FlowLayout.LEFT, 20, 34)); // increased vgap to move text lower
+leftInfo.setOpaque(false);
+leftInfo.add(nowPlayingLabel);
+
+// "Vol" și slider – la același nivel
+JPanel rightInfo = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 22)); // 22 -> la fel, jos
+rightInfo.setOpaque(false);
+
+// Put the Vol label and slider inside a gray box with padding and subtle border
+JPanel volBox = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 6));
+volBox.setOpaque(true);
+volBox.setBackground(new Color(70, 70, 70)); // gray box
+volBox.setBorder(BorderFactory.createCompoundBorder(
+    BorderFactory.createLineBorder(new Color(90, 90, 90)),
+    BorderFactory.createEmptyBorder(6, 8, 6, 8)
+));
+volBox.add(volLabel);
+volBox.add(volumeSlider);
+
+rightInfo.add(volBox);
+
+centerPanel.add(leftInfo, BorderLayout.CENTER);
+centerPanel.add(rightInfo, BorderLayout.EAST);
+
+    // add progress/seek bar centered below the info row
+    JPanel seekWrap = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 6));
+    seekWrap.setOpaque(false);
+    seekWrap.add(progressContainer);
+    centerPanel.add(seekWrap, BorderLayout.SOUTH);
+
+    bottom.add(controls, BorderLayout.WEST);
+    bottom.add(centerPanel, BorderLayout.CENTER);
+
+    // ==== assemble ====
+    musicPanel.add(label, BorderLayout.NORTH);
+    musicPanel.add(songListPanel, BorderLayout.CENTER);
+    musicPanel.add(bottom, BorderLayout.SOUTH);
+
+    // ==== actions ====
+    prevBtn.addActionListener(e -> { playClickSound(); playPrevious(); });
+    nextBtn.addActionListener(e -> { playClickSound(); playNext(); });
+    stopBtn.addActionListener(e -> { playClickSound(); stopMusic(); });
+    backBtn.addActionListener(e -> {
+        playClickSound();
+        stopMusic();
+        animateBackTransition();
+    });
+    playBtn.addActionListener(e -> {
+        playClickSound();
+        if (clip == null) playSelectedFromList();
+        else pauseOrResume();
+        playBtn.setIcon(loadButtonIcon(ControlButton.Type.PLAY_PAUSE));
+    });
+}
+
+
+    // ================= CONTROL BUTTONS =================
+
     private ControlButton createControlButton(ControlButton.Type type) {
         ControlButton btn = new ControlButton(type);
-        btn.addActionListener(e -> {
-            // actual actions are set in initMusicPanel
+        btn.setPreferredSize(new Dimension(50, 50));
+        btn.setIcon(loadButtonIcon(type));
+        btn.setBorder(null);
+        btn.setContentAreaFilled(false);
+        btn.setFocusPainted(false);
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        
+        // Add mouse listener to trigger animation on press
+        btn.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                btn.animatePress();
+            }
         });
+        
         return btn;
     }
 
-    private class ControlButton extends JButton {
-        enum Type { PREV, PLAY_PAUSE, NEXT, STOP, BACK }
-
-        private final Type type;
-        private float scale = 1.0f;
-        private float glowAlpha = 0.0f;
-        private Timer glowTimer;
-
-        ControlButton(Type type) {
-            this.type = type;
-            setFocusPainted(false);
-            setBorderPainted(false);
-            setContentAreaFilled(false);
-            setOpaque(false);
-            setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-
-            addMouseListener(new MouseAdapter() {
-                @Override
-                public void mouseEntered(MouseEvent e) {
-                    animateGlow(true);
-                }
-
-                @Override
-                public void mouseExited(MouseEvent e) {
-                    animateGlow(false);
-                }
-
-                @Override
-                public void mousePressed(MouseEvent e) {
-                    animateClick(true);
-                }
-
-                @Override
-                public void mouseReleased(MouseEvent e) {
-                    animateClick(false);
-                }
-            });
+    private ImageIcon loadButtonIcon(ControlButton.Type type) {
+        String file;
+        switch (type) {
+            case PLAY_PAUSE -> file = isPlaying ? "pause.png" : "play.png";
+            case STOP -> file = "stop.png";
+            case NEXT -> file = "next.png";
+            case PREV -> file = "prev.png";
+            case BACK -> file = "back.png";
+            default -> file = "play.png";
         }
+        File f = new File(ICON_PATH + file);
+        if (!f.exists()) {
+            System.out.println("Missing icon: " + f.getPath());
+            return new ImageIcon();
+        }
+        Image img = new ImageIcon(f.getAbsolutePath()).getImage()
+                .getScaledInstance(32, 32, Image.SCALE_SMOOTH);
+        return new ImageIcon(img);
+    }
+
+    private static class ControlButton extends JButton {
+        enum Type { PREV, PLAY_PAUSE, NEXT, STOP, BACK }
+        private float pressAnimation = 0f;
+        private Timer pressTimer;
+
+        ControlButton(Type type) {}
 
         @Override
         protected void paintComponent(Graphics g) {
-            Graphics2D g2d = (Graphics2D) g.create();
-            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            Graphics2D g2 = (Graphics2D) g;
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-            int w = getWidth();
-            int h = getHeight();
+            // Apply scale animation on press with smooth easing
+            float easedPress = pressAnimation * pressAnimation * (3f - 2f * pressAnimation); // smooth easing
+            float scale = 1f - (easedPress * 0.15f); // scale down 15% max
+            int w = getWidth(), h = getHeight();
+            int scaledW = (int) (w * scale);
+            int scaledH = (int) (h * scale);
+            int x = (w - scaledW) / 2;
+            int y = (h - scaledH) / 2;
 
-            int newW = (int) (w * scale);
-            int newH = (int) (h * scale);
-            int x = (w - newW) / 2;
-            int y = (h - newH) / 2;
-            g2d.translate(x, y);
-            g2d.scale(scale, scale);
+            // Draw semi-transparent background with color based on press
+            int bgAlpha = (int) (30 + easedPress * 80);
+            g2.setColor(new Color(255, 255, 255, bgAlpha));
+            g2.fillRoundRect(x, y, scaledW, scaledH, 15, 15);
 
-            int arc = 26;
+            // Draw border/glow with stronger effect
+            int glowAlpha = (int) (80 + easedPress * 100);
+            Color glowColor = new Color(30, 215, 96, glowAlpha);
+            g2.setColor(glowColor);
+            g2.setStroke(new BasicStroke(1.5f + easedPress * 1.5f));
+            g2.drawRoundRect(x, y, scaledW, scaledH, 15, 15);
 
-            if (glowAlpha > 0f) {
-                g2d.setColor(new Color(30, 215, 96, (int) (130 * glowAlpha)));
-                g2d.fillRoundRect(2, 3, w - 4, h - 4, arc + 8, arc + 8);
+            // Outer glow ring
+            g2.setColor(new Color(30, 215, 96, (int) (50 * easedPress)));
+            g2.setStroke(new BasicStroke(1f));
+            g2.drawRoundRect(x - 4, y - 4, scaledW + 8, scaledH + 8, 15, 15);
+
+            // Draw the icon centered
+            Icon icon = getIcon();
+            if (icon != null) {
+                int iconX = x + (scaledW - icon.getIconWidth()) / 2;
+                int iconY = y + (scaledH - icon.getIconHeight()) / 2;
+                icon.paintIcon(this, g2, iconX, iconY);
             }
-
-            g2d.setColor(new Color(0, 0, 0, 120));
-            g2d.fillRoundRect(3, 5, w - 6, h - 5, arc, arc);
-
-            GradientPaint gp = new GradientPaint(
-                    0, 0, new Color(40, 40, 40),
-                    0, h, new Color(15, 15, 15)
-            );
-            g2d.setPaint(gp);
-            g2d.fillRoundRect(0, 0, w - 4, h - 6, arc, arc);
-
-            g2d.setColor(new Color(255, 255, 255, 40));
-            g2d.setStroke(new BasicStroke(1.5f));
-            g2d.drawRoundRect(0, 0, w - 4, h - 6, arc, arc);
-
-            g2d.setColor(new Color(230, 230, 230));
-
-            int cx = (w - 4) / 2;
-            int cy = (h - 6) / 2;
-            int size = Math.min(w, h) / 3 + 4;
-
-            switch (type) {
-                case PLAY_PAUSE:
-                    if (!isPlaying) {
-                        Polygon triangle = new Polygon();
-                        triangle.addPoint(cx - size / 2, cy - size);
-                        triangle.addPoint(cx - size / 2, cy + size);
-                        triangle.addPoint(cx + size, cy);
-                        g2d.fillPolygon(triangle);
-                    } else {
-                        int barWidth = size / 3;
-                        int barHeight = size * 2;
-                        int gap = barWidth / 2;
-                        g2d.fillRoundRect(cx - gap - barWidth, cy - barHeight / 2, barWidth, barHeight, 6, 6);
-                        g2d.fillRoundRect(cx + gap, cy - barHeight / 2, barWidth, barHeight, 6, 6);
-                    }
-                    break;
-                case PREV:
-                    int tSize = size;
-                    Polygon leftTri = new Polygon();
-                    leftTri.addPoint(cx + tSize / 2, cy - tSize);
-                    leftTri.addPoint(cx + tSize / 2, cy + tSize);
-                    leftTri.addPoint(cx - tSize, cy);
-                    g2d.fillPolygon(leftTri);
-                    g2d.fillRect(cx + tSize / 2 + 2, cy - tSize, 4, tSize * 2);
-                    break;
-                case NEXT:
-                    int t2 = size;
-                    Polygon rightTri = new Polygon();
-                    rightTri.addPoint(cx - t2 / 2, cy - t2);
-                    rightTri.addPoint(cx - t2 / 2, cy + t2);
-                    rightTri.addPoint(cx + t2, cy);
-                    g2d.fillPolygon(rightTri);
-                    g2d.fillRect(cx - t2 / 2 - 6, cy - t2, 4, t2 * 2);
-                    break;
-                case STOP:
-                    int sq = size;
-                    g2d.fillRoundRect(cx - sq / 2, cy - sq / 2, sq, sq, 6, 6);
-                    break;
-                case BACK:
-                    int bSize = size;
-                    Polygon arrow = new Polygon();
-                    arrow.addPoint(cx - bSize, cy);
-                    arrow.addPoint(cx, cy - bSize);
-                    arrow.addPoint(cx, cy + bSize);
-                    g2d.fillPolygon(arrow);
-                    break;
-            }
-
-            g2d.dispose();
         }
 
-        void animateClick(boolean pressed) {
-            float target = pressed ? 0.9f : 1.0f;
-            new Thread(() -> {
-                try {
-                    for (int i = 0; i < 5; i++) {
-                        scale += (target - scale) * 0.5f;
-                        repaint();
-                        Thread.sleep(15);
-                    }
-                    scale = target;
-                    repaint();
-                } catch (InterruptedException ignored) {}
-            }).start();
-        }
-
-        void animateGlow(boolean hoverIn) {
-            if (glowTimer != null && glowTimer.isRunning()) glowTimer.stop();
-            glowTimer = new Timer(15, null);
-            glowTimer.addActionListener(e -> {
-                float target = hoverIn ? 1.0f : 0.0f;
-                glowAlpha += (target - glowAlpha) * 0.2f;
-                if (Math.abs(target - glowAlpha) < 0.02f) {
-                    glowAlpha = target;
-                    glowTimer.stop();
+        void animatePress() {
+            if (pressTimer != null && pressTimer.isRunning()) pressTimer.stop();
+            pressTimer = new Timer(30, e -> {
+                pressAnimation += 0.12f;
+                if (pressAnimation > 1f) {
+                    pressAnimation = 1f;
+                    pressTimer.stop();
+                    // Animate back out
+                    animateRelease();
+                    return;
                 }
                 repaint();
             });
-            glowTimer.start();
+            pressTimer.start();
+        }
+
+        void animateRelease() {
+            if (pressTimer != null && pressTimer.isRunning()) pressTimer.stop();
+            pressTimer = new Timer(30, e -> {
+                pressAnimation -= 0.15f;
+                if (pressAnimation < 0f) {
+                    pressAnimation = 0f;
+                    pressTimer.stop();
+                    return;
+                }
+                repaint();
+            });
+            pressTimer.start();
         }
     }
 
-    // ===== logic =====
+    // ================= LOGIC PLAYBACK =================
+
     private void openMood(String mood) {
         selectedMood = mood;
         listModel.clear();
         currentFiles = null;
         currentIndex = -1;
-        nowPlayingLabel.setText("Now playing: -");
-        isPaused = false;
-        pausedPosition = 0;
-        isPlaying = false;
-        if (playBtn != null) playBtn.repaint();
+        stopMusic(); // reset when changing mood
 
         File folder = new File(MUSIC_PATH + mood);
         if (folder.exists() && folder.isDirectory()) {
-            File[] files = folder.listFiles((dir, name) -> name.toLowerCase().endsWith(".wav"));
+                File[] files = folder.listFiles((d, n) -> n.toLowerCase().endsWith(".wav"));
             if (files != null && files.length > 0) {
                 currentFiles = files;
-                for (File f : files) listModel.addElement(f.getName());
+                for (File f : files) {
+                    listModel.addElement(f.getName());
+                }
             } else {
-                JOptionPane.showMessageDialog(this, "No songs found for " + mood);
+                JOptionPane.showMessageDialog(this, "No songs found for: " + mood);
             }
         } else {
-            JOptionPane.showMessageDialog(this, "Folder missing: " + folder.getPath());
+            JOptionPane.showMessageDialog(this, "Folder not found: " + folder.getPath());
         }
 
+        // Animate transition to music panel
+        animateTransition();
+    }
+
+    private void animateTransition() {
+        // Create fade animation when showing music panel
+        musicPanel.setOpaque(false);
+        musicPanel.setAlpha(0f);
+        songListPanel.setAlpha(0f);
         cardLayout.show(mainPanel, "music");
+        
+        Timer transitionTimer = new Timer(25, null);
+        transitionTimer.addActionListener(e -> {
+            float alpha = musicPanel.getAlpha();
+            alpha += 0.1f;
+            if (alpha >= 1f) {
+                alpha = 1f;
+                ((Timer) e.getSource()).stop();
+                musicPanel.setOpaque(true);
+            }
+            musicPanel.setAlpha(alpha);
+            songListPanel.setAlpha(alpha);
+            mainPanel.repaint();
+        });
+        transitionTimer.start();
+    }
+
+    private void animateBackTransition() {
+        // Fade out before returning to mood panel
+        Timer fadeOutTimer = new Timer(25, null);
+        fadeOutTimer.addActionListener(e -> {
+            float alpha = musicPanel.getAlpha();
+            alpha -= 0.1f;
+            if (alpha <= 0f) {
+                alpha = 0f;
+                ((Timer) e.getSource()).stop();
+                cardLayout.show(mainPanel, "mood");
+                musicPanel.setAlpha(1f);
+                songListPanel.setAlpha(1f);
+            }
+            musicPanel.setAlpha(alpha);
+            songListPanel.setAlpha(alpha);
+            mainPanel.repaint();
+        });
+        fadeOutTimer.start();
+    }
+
+    private void animateMoodPanelIn() {
+        // Fade in the mood panel on app startup
+        moodPanel.setAlpha(0f);
+        Timer fadeInTimer = new Timer(25, null);
+        fadeInTimer.addActionListener(e -> {
+            float alpha = moodPanel.getAlpha();
+            alpha += 0.08f;
+            if (alpha >= 1f) {
+                alpha = 1f;
+                ((Timer) e.getSource()).stop();
+            }
+            moodPanel.setAlpha(alpha);
+            mainPanel.repaint();
+        });
+        fadeInTimer.start();
     }
 
     private void playSelectedFromList() {
@@ -727,80 +869,143 @@ public class MusicMoodApp extends JFrame {
         }
         int index = songList.getSelectedIndex();
         if (index < 0) {
-            JOptionPane.showMessageDialog(this, "Please select a song first.");
+            JOptionPane.showMessageDialog(this, "Select a song first.");
             return;
         }
         currentIndex = index;
-        isPaused = false;
-        pausedPosition = 0;
+        pausedPosition = 0; // new song -> from start
         playCurrentIndex();
     }
 
     private void playCurrentIndex() {
         if (currentFiles == null || currentIndex < 0 || currentIndex >= currentFiles.length) return;
-        stopMusic();
         File audioFile = currentFiles[currentIndex];
+        
         try {
-            AudioInputStream audioStream = AudioSystem.getAudioInputStream(audioFile);
+            stopClipOnly();
+            AudioInputStream ais = AudioSystem.getAudioInputStream(audioFile);
             clip = AudioSystem.getClip();
-            clip.open(audioStream);
+            clip.open(ais);
             setupVolumeControl();
+            clip.setMicrosecondPosition(pausedPosition);
             clip.start();
-            songList.setSelectedIndex(currentIndex);
-            nowPlayingLabel.setText("Now playing: " + audioFile.getName());
-            isPaused = false;
-            pausedPosition = 0;
             isPlaying = true;
-            if (playBtn != null) playBtn.repaint();
+            isPaused = false;
+            songList.setSelectedIndex(currentIndex);
+            updateNowPlayingLabel(audioFile.getName());
+            playBtn.setIcon(loadButtonIcon(ControlButton.Type.PLAY_PAUSE));
+            startProgressTimer();
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "Cannot play: " + ex.getMessage());
         }
     }
 
-    private void playPrevious() {
+    private void playNext() {
         if (currentFiles == null || currentFiles.length == 0) return;
-        currentIndex = (currentIndex <= 0) ? currentFiles.length - 1 : currentIndex - 1;
-        isPaused = false;
-        pausedPosition = 0;
+        currentIndex = (currentIndex + 1) % currentFiles.length;
+        pausedPosition = 0; // next song from start
         playCurrentIndex();
     }
 
-    private void playNext() {
+    private void playPrevious() {
         if (currentFiles == null || currentFiles.length == 0) return;
-        currentIndex = (currentIndex >= currentFiles.length - 1) ? 0 : currentIndex + 1;
-        isPaused = false;
-        pausedPosition = 0;
+        currentIndex = (currentIndex - 1 + currentFiles.length) % currentFiles.length;
+        pausedPosition = 0; // previous from start
         playCurrentIndex();
     }
 
     private void pauseOrResume() {
         if (clip == null) return;
-        if (!isPaused) {
+
+        if (!isPaused && clip.isRunning()) {
+            // pause
             pausedPosition = clip.getMicrosecondPosition();
             clip.stop();
             isPaused = true;
             isPlaying = false;
-        } else {
+            stopProgressTimer();
+        } else if (isPaused || !clip.isRunning()) {
+            // resume from pausedPosition
             clip.setMicrosecondPosition(pausedPosition);
             clip.start();
             isPaused = false;
             isPlaying = true;
+            startProgressTimer();
         }
-        if (playBtn != null) playBtn.repaint();
     }
 
-    private void stopMusic() {
+    private void stopClipOnly() {
         if (clip != null) {
             if (clip.isRunning()) clip.stop();
             clip.close();
             clip = null;
+            resetProgress();
         }
-        isPaused = false;
+    }
+    
+    // ensure progress timer is stopped and UI reset when clip is stopped
+    private void resetProgress() {
+        stopProgressTimer();
+        if (progressSlider != null) {
+            progressSlider.setValue(0);
+            progressSlider.setToolTipText(null);
+            progressSlider.setEnabled(true);
+        }
+    }
+
+    // ===== progress timer helpers =====
+    private void startProgressTimer() {
+        if (progressTimer == null) {
+            progressTimer = new javax.swing.Timer(200, e -> {
+                updateProgressSlider();
+                updateTimeLabels();
+            });
+        }
+        progressTimer.start();
+    }
+
+    private void stopProgressTimer() {
+        if (progressTimer != null) progressTimer.stop();
+    }
+
+    private void updateTimeLabels() {
+        if (currentTimeLabel != null && totalTimeLabel != null && clip != null && clip.isOpen()) {
+            currentTimeLabel.setText(formatTime(clip.getMicrosecondPosition()));
+            totalTimeLabel.setText(formatTime(clip.getMicrosecondLength()));
+        }
+    }
+
+    private void updateProgressSlider() {
+        if (clip == null || !clip.isOpen()) {
+            progressSlider.setValue(0);
+            return;
+        }
+        long len = clip.getMicrosecondLength();
+        if (len <= 0) {
+            progressSlider.setEnabled(false);
+            progressSlider.setValue(0);
+            return;
+        }
+        long pos = clip.getMicrosecondPosition();
+        if (!seekingProgress) {
+            int val = (int) ((pos * 1000) / len);
+            progressSlider.setValue(Math.max(0, Math.min(1000, val)));
+        }
+        progressSlider.setToolTipText(formatTime(pos) + " / " + formatTime(len));
+    }
+
+    private void stopMusic() {
+        stopClipOnly();
         pausedPosition = 0;
+        isPaused = false;
         isPlaying = false;
         nowPlayingLabel.setText("Now playing: -");
-        if (playBtn != null) playBtn.repaint();
+        if (playBtn != null) {
+            playBtn.setIcon(loadButtonIcon(ControlButton.Type.PLAY_PAUSE));
+        }
     }
+
+    // ================= VOLUME =================
 
     private void setupVolumeControl() {
         volumeControl = null;
@@ -812,10 +1017,50 @@ public class MusicMoodApp extends JFrame {
 
     private void updateVolume() {
         if (volumeControl == null) return;
-        int value = volumeSlider.getValue();
+        
+        // Convert linear slider (0-100) to logarithmic gain for better perceived volume control
+        float sliderVal = volumeSlider.getValue() / 100f;
         float min = volumeControl.getMinimum();
         float max = volumeControl.getMaximum();
-        float gain = (float) (min + (max - min) * Math.pow(value / 100.0, 1.5));
+        
+        // Logarithmic scale: 0 slider = min, 1 slider = max
+        // Using power function for smoother progression
+        float logVal = (float) Math.pow(sliderVal, 0.7f); // 0.7 gives better low-end control
+        float gain = min + (max - min) * logVal;
         volumeControl.setValue(gain);
     }
+
+    // format microsecond time to M:SS
+    private String formatTime(long micros) {
+        if (micros <= 0) return "0:00";
+        long totalSec = micros / 1_000_000L;
+        long m = totalSec / 60;
+        long s = totalSec % 60;
+        return String.format("%d:%02d", m, s);
+    }
+    // ================= SHORTEN SONG TITLE =================
+    private void updateNowPlayingLabel(String fileName) {
+        // Calculate available width for the label based on container size
+        int availableWidth = nowPlayingLabel.getWidth();
+        if (availableWidth <= 0) {
+            availableWidth = 400; // Default fallback
+        }
+        
+        // Estimate characters per pixel (rough calculation)
+        int maxChars = Math.max(10, (availableWidth - 40) / 8); // 8 pixels per character average
+        
+        String displayText = "Now playing: " + shortenTitle(fileName, maxChars);
+        nowPlayingLabel.setText(displayText);
+        nowPlayingLabel.setToolTipText(fileName); // Full name in tooltip
+    }
+
+    private String shortenTitle(String title, int maxChars) {
+        if (title.length() <= maxChars) return title;
+        String ext = "";
+        int dot = title.lastIndexOf('.');
+        if (dot > 0) ext = title.substring(dot); // preserve extension (e.g., .wav)
+        String base = title.substring(0, Math.min(maxChars - ext.length() - 3, dot > 0 ? dot : title.length()));
+        return base + "..." + ext;
+    }
+
 }
