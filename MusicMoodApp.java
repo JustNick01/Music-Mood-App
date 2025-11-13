@@ -63,6 +63,10 @@ public class MusicMoodApp extends JFrame {
 
     private ControlButton playBtn, stopBtn, nextBtn, prevBtn, backBtn;
     private JLabel nowPlayingLabel;
+    private JLabel volLabel;
+    private JLabel titleLabel;
+    private JLabel moodTitleLabel;
+    private JLabel moodSubtitleLabel;
     private JSlider volumeSlider;
     private JSlider progressSlider;
     private javax.swing.Timer progressTimer;
@@ -75,6 +79,7 @@ public class MusicMoodApp extends JFrame {
 
     private Clip uiClickClip;
     private Font customFont;
+    private Font musicFont;
     private boolean isFullscreen = false;
 
     private final String MUSIC_PATH = "music/";
@@ -156,6 +161,18 @@ public class MusicMoodApp extends JFrame {
                 System.out.println("Font not found: " + fontFile.getPath());
                 customFont = new Font("SansSerif", Font.PLAIN, 20);
             }
+            // Try to load a second font specifically for the music selection page
+            try {
+                File mf = new File("fonts/FontV2.ttf");
+                if (mf.exists()) {
+                    musicFont = Font.createFont(Font.TRUETYPE_FONT, mf);
+                    GraphicsEnvironment.getLocalGraphicsEnvironment().registerFont(musicFont);
+                } else {
+                    musicFont = customFont; // fallback
+                }
+            } catch (Exception ex) {
+                musicFont = customFont;
+            }
         } catch (Exception e) {
             System.out.println("Failed to load font: " + e.getMessage());
             customFont = new Font("SansSerif", Font.PLAIN, 20);
@@ -208,19 +225,19 @@ public class MusicMoodApp extends JFrame {
             }
         };
 
-        JLabel title = new JLabel("Music Mood App", SwingConstants.CENTER);
-        title.setForeground(Color.WHITE);
-        title.setFont(fBold(48f));
+    moodTitleLabel = new JLabel("Music Mood App", SwingConstants.CENTER);
+    moodTitleLabel.setForeground(Color.WHITE);
+    moodTitleLabel.setFont(fBold(48f));
 
-        JLabel subtitle = new JLabel("Choose your mood", SwingConstants.CENTER);
-        subtitle.setForeground(new Color(220, 220, 220));
-        subtitle.setFont(fPlain(26f));
+    moodSubtitleLabel = new JLabel("Choose your mood", SwingConstants.CENTER);
+    moodSubtitleLabel.setForeground(new Color(220, 220, 220));
+    moodSubtitleLabel.setFont(fPlain(26f));
 
         JPanel top = new JPanel(new GridLayout(2, 1));
         top.setOpaque(false);
         top.setBorder(BorderFactory.createEmptyBorder(25, 0, 20, 0));
-        top.add(title);
-        top.add(subtitle);
+    top.add(moodTitleLabel);
+    top.add(moodSubtitleLabel);
 
         JPanel grid = new JPanel(new GridLayout(2, 3, 25, 25));
         grid.setOpaque(false);
@@ -247,7 +264,24 @@ public class MusicMoodApp extends JFrame {
 
     private void updateMoodButtonFonts(JPanel grid) {
         // Calculate responsive font size based on mood panel height
-        float baseFontSize = Math.max(16f, Math.min(40f, moodPanel.getHeight() / 12f));
+        int panelHeight = moodPanel.getHeight();
+        int panelWidth = moodPanel.getWidth();
+        
+        // Scale based on both dimensions
+        float scale = Math.min(panelWidth / 1000f, panelHeight / 600f);
+        
+        // Update title and subtitle
+        if (moodTitleLabel != null) {
+            float titleSize = Math.max(24f, Math.min(48f, 48f * scale));
+            moodTitleLabel.setFont(fBold(titleSize));
+        }
+        if (moodSubtitleLabel != null) {
+            float subtitleSize = Math.max(16f, Math.min(26f, 26f * scale));
+            moodSubtitleLabel.setFont(fPlain(subtitleSize));
+        }
+        
+        // Update mood button fonts
+        float baseFontSize = Math.max(16f, Math.min(40f, 40f * scale));
         
         for (Component comp : grid.getComponents()) {
             if (comp instanceof MoodButton) {
@@ -374,9 +408,10 @@ public class MusicMoodApp extends JFrame {
         }
     };
 
-    JLabel label = new JLabel("Select a song", SwingConstants.CENTER);
-    label.setForeground(Color.WHITE);
-    label.setFont(fBold(48f));
+    titleLabel = new JLabel("Select a song", SwingConstants.CENTER);
+    titleLabel.setForeground(Color.WHITE);
+    // revert: use the app's configured bold font for consistency
+    titleLabel.setFont(fBold(48f));
 
     listModel = new DefaultListModel<>();
     songList = new JList<>(listModel);
@@ -384,7 +419,8 @@ public class MusicMoodApp extends JFrame {
     songList.setForeground(Color.WHITE);
     songList.setSelectionBackground(new Color(0x1DB954));
     songList.setSelectionForeground(Color.BLACK);
-    songList.setFont(fPlain(22f));
+    if (musicFont != null) songList.setFont(musicFont.deriveFont(Font.PLAIN, 22f));
+    else songList.setFont(fPlain(22f));
 
     JScrollPane scrollPane = new JScrollPane(songList);
     scrollPane.setBorder(BorderFactory.createEmptyBorder(10, 40, 10, 40));
@@ -433,16 +469,20 @@ public class MusicMoodApp extends JFrame {
     // ==== center section ====
     nowPlayingLabel = new JLabel("Now playing: -");
     nowPlayingLabel.setForeground(Color.WHITE);
-    nowPlayingLabel.setFont(fPlain(18f));
+    // use FontV2 if available for Now playing text
+    if (musicFont != null) nowPlayingLabel.setFont(musicFont.deriveFont(Font.PLAIN, 18f));
+    else nowPlayingLabel.setFont(fPlain(18f));
     nowPlayingLabel.setPreferredSize(new Dimension(500, 36));
     nowPlayingLabel.setMaximumSize(new Dimension(Short.MAX_VALUE, 36));
     nowPlayingLabel.setHorizontalAlignment(SwingConstants.LEFT);
     nowPlayingLabel.setVerticalAlignment(SwingConstants.CENTER);
     nowPlayingLabel.setToolTipText("Currently playing song");
 
-    JLabel volLabel = new JLabel("Vol");
+    volLabel = new JLabel("Vol");
     volLabel.setForeground(Color.WHITE);
-    volLabel.setFont(fPlain(18f));
+    // use FontV2 for the volume label if available
+    if (musicFont != null) volLabel.setFont(musicFont.deriveFont(Font.PLAIN, 18f));
+    else volLabel.setFont(fPlain(18f));
 
     volumeSlider = new JSlider(0, 100, 80);
     volumeSlider.setPreferredSize(new Dimension(150, 22));
@@ -603,8 +643,12 @@ leftInfo.setOpaque(false);
 leftInfo.add(nowPlayingLabel);
 
 // "Vol" și slider – la același nivel
-JPanel rightInfo = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 22)); // 22 -> la fel, jos
+// increase vgap by 6px so the volume box sits slightly lower
+JPanel rightInfo = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 28)); // was 22, then 26
 rightInfo.setOpaque(false);
+// add a bit of right padding so the volume box sits slightly left from the edge
+// nudged: reduced to 15px (3px to the right from previous 18px)
+rightInfo.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 15));
 
 // Put the Vol label and slider inside a gray box with padding and subtle border
 JPanel volBox = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 6));
@@ -622,17 +666,29 @@ rightInfo.add(volBox);
 centerPanel.add(leftInfo, BorderLayout.CENTER);
 centerPanel.add(rightInfo, BorderLayout.EAST);
 
-    // add progress/seek bar centered below the info row
+    // Add resize listener to update "Now playing" label when window size changes
+    centerPanel.addComponentListener(new java.awt.event.ComponentAdapter() {
+        @Override
+        public void componentResized(java.awt.event.ComponentEvent e) {
+            // Re-update the label when the panel is resized (e.g., fullscreen)
+            if (clip != null && clip.isOpen() && currentFiles != null && currentIndex >= 0) {
+                updateNowPlayingLabel(currentFiles[currentIndex].getName());
+            }
+        }
+    });
+
+    // add progress/seek bar as its own centered row across the bottom
     JPanel seekWrap = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 6));
     seekWrap.setOpaque(false);
     seekWrap.add(progressContainer);
-    centerPanel.add(seekWrap, BorderLayout.SOUTH);
 
+    // assemble bottom: controls left, center info in center, progress centered at bottom
     bottom.add(controls, BorderLayout.WEST);
     bottom.add(centerPanel, BorderLayout.CENTER);
+    bottom.add(seekWrap, BorderLayout.SOUTH);
 
     // ==== assemble ====
-    musicPanel.add(label, BorderLayout.NORTH);
+    musicPanel.add(titleLabel, BorderLayout.NORTH);
     musicPanel.add(songListPanel, BorderLayout.CENTER);
     musicPanel.add(bottom, BorderLayout.SOUTH);
 
@@ -650,6 +706,14 @@ centerPanel.add(rightInfo, BorderLayout.EAST);
         if (clip == null) playSelectedFromList();
         else pauseOrResume();
         playBtn.setIcon(loadButtonIcon(ControlButton.Type.PLAY_PAUSE));
+    });
+    
+    // Add resize listener to make all elements responsive
+    musicPanel.addComponentListener(new java.awt.event.ComponentAdapter() {
+        @Override
+        public void componentResized(java.awt.event.ComponentEvent e) {
+            updateMusicPanelSizes();
+        }
     });
 }
 
@@ -789,7 +853,11 @@ centerPanel.add(rightInfo, BorderLayout.EAST);
             if (files != null && files.length > 0) {
                 currentFiles = files;
                 for (File f : files) {
-                    listModel.addElement(f.getName());
+                    // Remove file extension for display
+                    String name = f.getName();
+                    int dotIndex = name.lastIndexOf('.');
+                    String displayName = (dotIndex > 0) ? name.substring(0, dotIndex) : name;
+                    listModel.addElement(displayName);
                 }
             } else {
                 JOptionPane.showMessageDialog(this, "No songs found for: " + mood);
@@ -1040,27 +1108,161 @@ centerPanel.add(rightInfo, BorderLayout.EAST);
     }
     // ================= SHORTEN SONG TITLE =================
     private void updateNowPlayingLabel(String fileName) {
-        // Calculate available width for the label based on container size
-        int availableWidth = nowPlayingLabel.getWidth();
+        // Remove file extension from display
+        int dotIndex = fileName.lastIndexOf('.');
+        String displayFileName = (dotIndex > 0) ? fileName.substring(0, dotIndex) : fileName;
+        
+        // Get the actual rendered font metrics for accurate calculation
+        FontMetrics fm = nowPlayingLabel.getFontMetrics(nowPlayingLabel.getFont());
+        
+        // Calculate available width for the label based on its parent container.
+        // Use the parent width (left info area) so the text shortens automatically
+        // when the volume box / right area takes more space.
+        int availableWidth = 0;
+        if (nowPlayingLabel.getParent() != null) availableWidth = nowPlayingLabel.getParent().getWidth();
         if (availableWidth <= 0) {
-            availableWidth = 400; // Default fallback
+            // Fallback to the label's own width or a sensible default
+            availableWidth = nowPlayingLabel.getWidth() > 0 ? nowPlayingLabel.getWidth() : 400;
+        }
+
+        // Calculate how many characters fit in the available width
+        String prefix = "Now playing: ";
+        int prefixWidth = fm.stringWidth(prefix);
+        int remainingWidth = availableWidth - prefixWidth - 20; // 20px margin
+        
+        // Find the maximum characters that fit (without extension)
+        String shortened = displayFileName;
+        if (fm.stringWidth(displayFileName) > remainingWidth) {
+            String ellipsis = "...";
+            int ellipsisWidth = fm.stringWidth(ellipsis);
+            int baseWidth = remainingWidth - ellipsisWidth;
+            
+            // Binary search for the right length
+            int maxBaseChars = displayFileName.length();
+            for (int i = displayFileName.length(); i > 0; i--) {
+                if (fm.stringWidth(displayFileName.substring(0, i)) <= baseWidth) {
+                    maxBaseChars = i;
+                    break;
+                }
+            }
+            shortened = displayFileName.substring(0, Math.max(1, maxBaseChars)) + ellipsis;
         }
         
-        // Estimate characters per pixel (rough calculation)
-        int maxChars = Math.max(10, (availableWidth - 40) / 8); // 8 pixels per character average
-        
-        String displayText = "Now playing: " + shortenTitle(fileName, maxChars);
+        String displayText = prefix + shortened;
         nowPlayingLabel.setText(displayText);
-        nowPlayingLabel.setToolTipText(fileName); // Full name in tooltip
+        nowPlayingLabel.setToolTipText(displayFileName); // Full name without extension in tooltip
     }
 
-    private String shortenTitle(String title, int maxChars) {
-        if (title.length() <= maxChars) return title;
-        String ext = "";
-        int dot = title.lastIndexOf('.');
-        if (dot > 0) ext = title.substring(dot); // preserve extension (e.g., .wav)
-        String base = title.substring(0, Math.min(maxChars - ext.length() - 3, dot > 0 ? dot : title.length()));
-        return base + "..." + ext;
+    private void updateMusicPanelSizes() {
+        int panelWidth = musicPanel.getWidth();
+        int panelHeight = musicPanel.getHeight();
+        
+        if (panelWidth <= 0 || panelHeight <= 0) return; // Not initialized yet
+        
+        // Calculate responsive sizes based on panel dimensions
+        float widthScale = panelWidth / 1000f; // Base width 1000
+        float heightScale = panelHeight / 600f; // Base height 600
+        float scale = Math.min(widthScale, heightScale);
+        
+        // Update title font size
+        if (titleLabel != null) {
+            float titleSize = Math.max(24f, Math.min(48f, 48f * scale));
+            titleLabel.setFont(fBold(titleSize));
+        }
+        
+        // Update volume label font size
+        if (volLabel != null) {
+            float volSize = Math.max(12f, Math.min(18f, 18f * scale));
+            if (musicFont != null) volLabel.setFont(musicFont.deriveFont(Font.PLAIN, volSize));
+            else volLabel.setFont(fPlain(volSize));
+        }
+        
+        // Update song list font
+        if (songList != null) {
+            float listFontSize = Math.max(14f, Math.min(22f, 22f * scale));
+            if (musicFont != null) songList.setFont(musicFont.deriveFont(Font.PLAIN, listFontSize));
+            else songList.setFont(fPlain(listFontSize));
+        }
+        
+        // Update control button sizes
+        int buttonSize = (int) Math.max(30, Math.min(50, 50 * scale));
+        int iconSize = (int) Math.max(20, Math.min(32, 32 * scale));
+        if (prevBtn != null) updateControlButtonSize(prevBtn, buttonSize, iconSize);
+        if (playBtn != null) updateControlButtonSize(playBtn, buttonSize, iconSize);
+        if (stopBtn != null) updateControlButtonSize(stopBtn, buttonSize, iconSize);
+        if (nextBtn != null) updateControlButtonSize(nextBtn, buttonSize, iconSize);
+        if (backBtn != null) updateControlButtonSize(backBtn, buttonSize, iconSize);
+        
+        // Update now playing label font
+        if (nowPlayingLabel != null) {
+            float labelSize = Math.max(12f, Math.min(18f, 18f * scale));
+            if (musicFont != null) nowPlayingLabel.setFont(musicFont.deriveFont(Font.PLAIN, labelSize));
+            else nowPlayingLabel.setFont(fPlain(labelSize));
+            
+            // Re-update the label text with new size
+            if (clip != null && clip.isOpen() && currentFiles != null && currentIndex >= 0) {
+                updateNowPlayingLabel(currentFiles[currentIndex].getName());
+            }
+        }
+        
+        // Update volume slider size
+        if (volumeSlider != null) {
+            int sliderWidth = (int) Math.max(100, Math.min(150, 150 * scale));
+            volumeSlider.setPreferredSize(new Dimension(sliderWidth, 22));
+            volumeSlider.setMaximumSize(new Dimension(sliderWidth, 22));
+            volumeSlider.setMinimumSize(new Dimension(sliderWidth, 22));
+        }
+        
+        // Update progress slider size
+        if (progressSlider != null) {
+            int progressWidth = (int) Math.max(250, Math.min(400, 400 * scale));
+            progressSlider.setPreferredSize(new Dimension(progressWidth, 8));
+            progressSlider.setMaximumSize(new Dimension(progressWidth, 8));
+        }
+        
+        // Update time labels
+        if (currentTimeLabel != null && totalTimeLabel != null) {
+            float timeSize = Math.max(10f, Math.min(14f, 14f * scale));
+            currentTimeLabel.setFont(fPlain(timeSize));
+            totalTimeLabel.setFont(fPlain(timeSize));
+        }
+        
+        musicPanel.revalidate();
+        musicPanel.repaint();
+    }
+    
+    private void updateControlButtonSize(ControlButton btn, int size, int iconSize) {
+        btn.setPreferredSize(new Dimension(size, size));
+        // Reload icon with new size
+        ControlButton.Type type = null;
+        if (btn == prevBtn) type = ControlButton.Type.PREV;
+        else if (btn == playBtn) type = ControlButton.Type.PLAY_PAUSE;
+        else if (btn == stopBtn) type = ControlButton.Type.STOP;
+        else if (btn == nextBtn) type = ControlButton.Type.NEXT;
+        else if (btn == backBtn) type = ControlButton.Type.BACK;
+        
+        if (type != null) {
+            btn.setIcon(loadButtonIconWithSize(type, iconSize));
+        }
+    }
+    
+    private ImageIcon loadButtonIconWithSize(ControlButton.Type type, int size) {
+        String file;
+        switch (type) {
+            case PLAY_PAUSE -> file = isPlaying ? "pause.png" : "play.png";
+            case STOP -> file = "stop.png";
+            case NEXT -> file = "next.png";
+            case PREV -> file = "prev.png";
+            case BACK -> file = "back.png";
+            default -> file = "play.png";
+        }
+        File f = new File(ICON_PATH + file);
+        if (!f.exists()) {
+            return new ImageIcon();
+        }
+        Image img = new ImageIcon(f.getAbsolutePath()).getImage()
+                .getScaledInstance(size, size, Image.SCALE_SMOOTH);
+        return new ImageIcon(img);
     }
 
 }
