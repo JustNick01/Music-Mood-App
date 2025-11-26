@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="c00ba8e2-2859-4439-8774-30a1458e8a6a" name="Changes" comment="Added mp3 support">
+      <change beforePath="$PROJECT_DIR$/music/sad/a bit very longer title for a bit longer test.wav" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/music/sad/this is just a longer title for a longer test.wav" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/MusicMoodApp.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/MusicMoodApp.java" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;JustNick01&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/JustNick01/Music-Mood-App.git&quot;,
+    &quot;accountId&quot;: &quot;27bd1e75-9827-46e8-a804-f2155de74f8e&quot;
+  }
+}</component>
+  <component name="ProblemsViewState">
+    <option name="selectedTabId" value="CurrentFile" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 7
+}</component>
+  <component name="ProjectId" id="35zOrOFQQ3wGNuvoLkYWkNNkulv" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ASKED_SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "Application.MusicMoodApp.executor": "Run",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "main",
+    "ignore.virus.scanning.warn.message": "true",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "D:/Projects/MusicMoodApp",
+    "project.structure.last.edited": "Modules",
+    "project.structure.proportion": "0.15",
+    "project.structure.side.proportion": "0.2"
+  }
+}]]></component>
+  <component name="RunManager" selected="Application.MusicMoodApp">
+    <configuration name="MusicMoodApp" type="Application" factoryName="Application">
+      <option name="MAIN_CLASS_NAME" value="MusicMoodApp" />
+      <module name="MusicMoodApp" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="Unnamed" type="CompoundRunConfigurationType">
+      <method v="2" />
+    </configuration>
+    <list>
+      <item itemvalue="Application.MusicMoodApp" />
+      <item itemvalue="Compound.Unnamed" />
+    </list>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-jdk-9823dce3aa75-bf35d07a577b-intellij.indexing.shared.core-IU-252.25557.131" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="c00ba8e2-2859-4439-8774-30a1458e8a6a" name="Changes" comment="" />
+      <created>1764109631299</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1764109631299</updated>
+    </task>
+    <task id="LOCAL-00001" summary="Added mp3 support">
+      <option name="closed" value="true" />
+      <created>1764110434732</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1764110434732</updated>
+    </task>
+    <task id="LOCAL-00002" summary="Added mp3 support">
+      <option name="closed" value="true" />
+      <created>1764110682376</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1764110682376</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
+    <servers />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="Added mp3 support" />
+    <option name="LAST_COMMIT_MESSAGE" value="Added mp3 support" />
+  </component>
+</project>

@@ -54,7 +54,7 @@ public class MusicMoodApp extends JFrame {
     private FloatControl volumeControl;
     private boolean isPaused = false;
     private long pausedPosition = 0;
-    
+
     // MP3 playback variables
     private boolean isMp3Mode = false;
     private SourceDataLine mp3Line;
@@ -125,10 +125,10 @@ public class MusicMoodApp extends JFrame {
         add(mainPanel);
 
         setVisible(true);
-        
+
         // Fade in the mood panel on startup
         SwingUtilities.invokeLater(() -> animateMoodPanelIn());
-        
+
         // Add keyboard shortcut for fullscreen (F11)
         addKeyListener(new KeyAdapter() {
             @Override
@@ -143,7 +143,7 @@ public class MusicMoodApp extends JFrame {
 
     private void toggleFullscreen() {
         isFullscreen = !isFullscreen;
-        
+
         if (isFullscreen) {
             // Enter fullscreen mode
             setExtendedState(JFrame.MAXIMIZED_BOTH);
@@ -193,12 +193,12 @@ public class MusicMoodApp extends JFrame {
 
     private Font fPlain(float size) {
         return (customFont != null ? customFont.deriveFont(Font.PLAIN, size)
-                                   : new Font("SansSerif", Font.PLAIN, (int) size));
+                : new Font("SansSerif", Font.PLAIN, (int) size));
     }
 
     private Font fBold(float size) {
         return (customFont != null ? customFont.deriveFont(Font.BOLD, size)
-                                   : new Font("SansSerif", Font.BOLD, (int) size));
+                : new Font("SansSerif", Font.BOLD, (int) size));
     }
 
     // ================= CLICK SOUND =================
@@ -230,26 +230,26 @@ public class MusicMoodApp extends JFrame {
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 int w = getWidth(), h = getHeight();
                 GradientPaint gp = new GradientPaint(0, 0, new Color(80, 80, 80),
-                                                     w, h, new Color(10, 10, 10));
+                        w, h, new Color(10, 10, 10));
                 g2.setPaint(gp);
                 g2.fillRect(0, 0, w, h);
                 super.paintComponent(g);
             }
         };
 
-    moodTitleLabel = new JLabel("Music Mood App", SwingConstants.CENTER);
-    moodTitleLabel.setForeground(Color.WHITE);
-    moodTitleLabel.setFont(fBold(48f));
+        moodTitleLabel = new JLabel("Music Mood App", SwingConstants.CENTER);
+        moodTitleLabel.setForeground(Color.WHITE);
+        moodTitleLabel.setFont(fBold(48f));
 
-    moodSubtitleLabel = new JLabel("Choose your mood", SwingConstants.CENTER);
-    moodSubtitleLabel.setForeground(new Color(220, 220, 220));
-    moodSubtitleLabel.setFont(fPlain(26f));
+        moodSubtitleLabel = new JLabel("Choose your mood", SwingConstants.CENTER);
+        moodSubtitleLabel.setForeground(new Color(220, 220, 220));
+        moodSubtitleLabel.setFont(fPlain(26f));
 
         JPanel top = new JPanel(new GridLayout(2, 1));
         top.setOpaque(false);
         top.setBorder(BorderFactory.createEmptyBorder(25, 0, 20, 0));
-    top.add(moodTitleLabel);
-    top.add(moodSubtitleLabel);
+        top.add(moodTitleLabel);
+        top.add(moodSubtitleLabel);
 
         JPanel grid = new JPanel(new GridLayout(2, 3, 25, 25));
         grid.setOpaque(false);
@@ -264,7 +264,7 @@ public class MusicMoodApp extends JFrame {
 
         moodPanel.add(top, BorderLayout.NORTH);
         moodPanel.add(grid, BorderLayout.CENTER);
-        
+
         // Add resize listener to update button font sizes dynamically
         moodPanel.addComponentListener(new java.awt.event.ComponentAdapter() {
             @Override
@@ -278,10 +278,10 @@ public class MusicMoodApp extends JFrame {
         // Calculate responsive font size based on mood panel height
         int panelHeight = moodPanel.getHeight();
         int panelWidth = moodPanel.getWidth();
-        
+
         // Scale based on both dimensions
         float scale = Math.min(panelWidth / 1000f, panelHeight / 600f);
-        
+
         // Update title and subtitle
         if (moodTitleLabel != null) {
             float titleSize = Math.max(24f, Math.min(48f, 48f * scale));
@@ -291,10 +291,10 @@ public class MusicMoodApp extends JFrame {
             float subtitleSize = Math.max(16f, Math.min(26f, 26f * scale));
             moodSubtitleLabel.setFont(fPlain(subtitleSize));
         }
-        
+
         // Update mood button fonts
         float baseFontSize = Math.max(16f, Math.min(40f, 40f * scale));
-        
+
         for (Component comp : grid.getComponents()) {
             if (comp instanceof MoodButton) {
                 ((MoodButton) comp).setFont(fBold(baseFontSize));
@@ -407,333 +407,333 @@ public class MusicMoodApp extends JFrame {
     // ================= MUSIC PANEL =================
 
     private void initMusicPanel() {
-    musicPanel = new AlphaPanel(new BorderLayout()) {
-        @Override
-        protected void paintComponent(Graphics g) {
-            Graphics2D g2 = (Graphics2D) g;
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            int w = getWidth(), h = getHeight();
-            // Solid background for top and bottom areas
-            g2.setColor(new Color(100, 100, 100));
-            g2.fillRect(0, 0, w, h);
-            super.paintComponent(g);
-        }
-    };
-
-    titleLabel = new JLabel("Select a song", SwingConstants.CENTER);
-    titleLabel.setForeground(Color.WHITE);
-    // revert: use the app's configured bold font for consistency
-    titleLabel.setFont(fBold(48f));
-
-    listModel = new DefaultListModel<>();
-    songList = new JList<>(listModel);
-    songList.setBackground(new Color(25, 25, 30));
-    songList.setForeground(Color.WHITE);
-    songList.setSelectionBackground(new Color(0x1DB954));
-    songList.setSelectionForeground(Color.BLACK);
-    if (musicFont != null) songList.setFont(musicFont.deriveFont(Font.PLAIN, 22f));
-    else songList.setFont(fPlain(22f));
-
-    JScrollPane scrollPane = new JScrollPane(songList);
-    scrollPane.setBorder(BorderFactory.createEmptyBorder(10, 40, 10, 40));
-    scrollPane.setOpaque(false);
-    scrollPane.getViewport().setOpaque(false);
-
-    // Wrap scrollPane in an AlphaPanel for fade-in animation with gradient
-    songListPanel = new AlphaPanel(new BorderLayout()) {
-        @Override
-        protected void paintComponent(Graphics g) {
-            Graphics2D g2 = (Graphics2D) g;
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            int w = getWidth(), h = getHeight();
-            // Smooth gradient from light gray to dark gray
-            GradientPaint gp = new GradientPaint(0, 0, new Color(180, 180, 180),
-                                                 0, h, new Color(60, 60, 60));
-            g2.setPaint(gp);
-            g2.fillRect(0, 0, w, h);
-            super.paintComponent(g);
-        }
-    };
-    songListPanel.add(scrollPane, BorderLayout.CENTER);
-
-    // ==== bottom bar ====
-    JPanel bottom = new JPanel(new BorderLayout());
-    bottom.setOpaque(false);
-    bottom.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16));
-
-    // ==== control buttons ====
-    // increase the vertical gap so the icons sit lower and align with the center area
-    JPanel controls = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 30));
-    controls.setOpaque(false);
-
-    prevBtn = createControlButton(ControlButton.Type.PREV);
-    playBtn = createControlButton(ControlButton.Type.PLAY_PAUSE);
-    stopBtn = createControlButton(ControlButton.Type.STOP);
-    nextBtn = createControlButton(ControlButton.Type.NEXT);
-    backBtn = createControlButton(ControlButton.Type.BACK);
-
-    controls.add(prevBtn);
-    controls.add(playBtn);
-    controls.add(stopBtn);
-    controls.add(nextBtn);
-    controls.add(backBtn);
-
-    // ==== center section ====
-    nowPlayingLabel = new JLabel("Now playing: -");
-    nowPlayingLabel.setForeground(Color.WHITE);
-    // use FontV2 if available for Now playing text
-    if (musicFont != null) nowPlayingLabel.setFont(musicFont.deriveFont(Font.PLAIN, 18f));
-    else nowPlayingLabel.setFont(fPlain(18f));
-    nowPlayingLabel.setPreferredSize(new Dimension(500, 36));
-    nowPlayingLabel.setMaximumSize(new Dimension(Short.MAX_VALUE, 36));
-    nowPlayingLabel.setHorizontalAlignment(SwingConstants.LEFT);
-    nowPlayingLabel.setVerticalAlignment(SwingConstants.CENTER);
-    nowPlayingLabel.setToolTipText("Currently playing song");
-
-    volLabel = new JLabel("Vol");
-    volLabel.setForeground(Color.WHITE);
-    // use FontV2 for the volume label if available
-    if (musicFont != null) volLabel.setFont(musicFont.deriveFont(Font.PLAIN, 18f));
-    else volLabel.setFont(fPlain(18f));
-
-    volumeSlider = new JSlider(0, 100, 80);
-    volumeSlider.setPreferredSize(new Dimension(150, 22));
-    volumeSlider.setMaximumSize(new Dimension(150, 22));
-    volumeSlider.setMinimumSize(new Dimension(150, 22));
-    volumeSlider.setOpaque(false);
-
-    // ==== glowing slider ====
-    final boolean[] hovering = {false};
-    volumeSlider.addMouseListener(new MouseAdapter() {
-        @Override public void mouseEntered(MouseEvent e) { hovering[0] = true; volumeSlider.repaint(); }
-        @Override public void mouseExited(MouseEvent e) { hovering[0] = false; volumeSlider.repaint(); }
-    });
-
-    volumeSlider.setUI(new BasicSliderUI(volumeSlider) {
-        @Override
-        public void paintTrack(Graphics g) {
-            Graphics2D g2 = (Graphics2D) g;
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            int cy = trackRect.y + (trackRect.height / 2) - 3;
-            int cw = trackRect.width;
-            int ch = 8;
-            g2.setColor(new Color(40, 40, 40));
-            g2.fillRoundRect(trackRect.x, cy, cw, ch, ch, ch);
-            int filled = (int) (cw * (slider.getValue() / 100.0));
-            Color fill = hovering[0] ? new Color(40, 255, 120) : new Color(30, 215, 96);
-            g2.setColor(fill);
-            g2.fillRoundRect(trackRect.x, cy, filled, ch, ch, ch);
-        }
-
-        @Override
-        public void paintThumb(Graphics g) {
-            Graphics2D g2 = (Graphics2D) g;
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            int size = 16;
-            int x = thumbRect.x + (thumbRect.width - size) / 2;
-            int y = thumbRect.y + (thumbRect.height - size) / 2;
-            Color c = hovering[0] ? new Color(40, 255, 120) : new Color(30, 215, 96);
-            g2.setColor(c);
-            g2.fillOval(x, y, size, size);
-        }
-    });
-
-    volumeSlider.addChangeListener((ChangeEvent e) -> updateVolume());
-
-    // ====== progress / seek slider (centered) ======
-    progressSlider = new JSlider(0, 1000, 0); // use 0..1000 for smoothness
-    progressSlider.setPreferredSize(new Dimension(400, 8)); // Much smaller, just the track
-    progressSlider.setMaximumSize(new Dimension(400, 8));
-    progressSlider.setOpaque(false);
-    progressSlider.setFocusable(false);
-    progressSlider.setBorder(null); // Remove any border
-
-    // user interaction: mark seeking on press, perform seek on release
-    progressSlider.addMouseListener(new MouseAdapter() {
-        @Override public void mousePressed(MouseEvent e) { seekingProgress = true; }
-        @Override public void mouseReleased(MouseEvent e) {
-            seekingProgress = false;
-            int val = progressSlider.getValue();
-            if (isMp3Mode && mp3TotalMicros > 0) {
-                long newPos = (long) ((val / 1000.0) * mp3TotalMicros);
-                mp3SeekTo(newPos);
-            } else if (clip != null && clip.isOpen() && clip.getMicrosecondLength() > 0) {
-                long newPos = (long) ((val / 1000.0) * clip.getMicrosecondLength());
-                try { clip.setMicrosecondPosition(newPos); } catch (Exception ignored) {}
+        musicPanel = new AlphaPanel(new BorderLayout()) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g;
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                int w = getWidth(), h = getHeight();
+                // Solid background for top and bottom areas
+                g2.setColor(new Color(100, 100, 100));
+                g2.fillRect(0, 0, w, h);
+                super.paintComponent(g);
             }
-        }
-    });
+        };
 
-    progressSlider.addChangeListener((ChangeEvent e) -> {
-        if (seekingProgress) {
-            int v = progressSlider.getValue();
-            if (isMp3Mode && mp3TotalMicros > 0) {
-                long len = mp3TotalMicros;
-                long pos = (long) ((v / 1000.0) * len);
-                progressSlider.setToolTipText(formatTime(pos) + " / " + formatTime(len));
-            } else if (clip != null && clip.isOpen() && clip.getMicrosecondLength() > 0) {
-                long len = clip.getMicrosecondLength();
-                long pos = (long) ((v / 1000.0) * len);
-                progressSlider.setToolTipText(formatTime(pos) + " / " + formatTime(len));
+        titleLabel = new JLabel("Select a song", SwingConstants.CENTER);
+        titleLabel.setForeground(Color.WHITE);
+        // revert: use the app's configured bold font for consistency
+        titleLabel.setFont(fBold(48f));
+
+        listModel = new DefaultListModel<>();
+        songList = new JList<>(listModel);
+        songList.setBackground(new Color(25, 25, 30));
+        songList.setForeground(Color.WHITE);
+        songList.setSelectionBackground(new Color(0x1DB954));
+        songList.setSelectionForeground(Color.BLACK);
+        if (musicFont != null) songList.setFont(musicFont.deriveFont(Font.PLAIN, 22f));
+        else songList.setFont(fPlain(22f));
+
+        JScrollPane scrollPane = new JScrollPane(songList);
+        scrollPane.setBorder(BorderFactory.createEmptyBorder(10, 40, 10, 40));
+        scrollPane.setOpaque(false);
+        scrollPane.getViewport().setOpaque(false);
+
+        // Wrap scrollPane in an AlphaPanel for fade-in animation with gradient
+        songListPanel = new AlphaPanel(new BorderLayout()) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g;
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                int w = getWidth(), h = getHeight();
+                // Smooth gradient from light gray to dark gray
+                GradientPaint gp = new GradientPaint(0, 0, new Color(180, 180, 180),
+                        0, h, new Color(60, 60, 60));
+                g2.setPaint(gp);
+                g2.fillRect(0, 0, w, h);
+                super.paintComponent(g);
             }
-        }
-    });
+        };
+        songListPanel.add(scrollPane, BorderLayout.CENTER);
 
-    // Custom UI for the progress slider with gradient and modern look
-    progressSlider.setUI(new BasicSliderUI(progressSlider) {
-        @Override
-        public void paintTrack(Graphics g) {
-            Graphics2D g2 = (Graphics2D) g;
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            int cy = trackRect.y + (trackRect.height / 2) - 4;
-            int cw = trackRect.width;
-            int ch = 8;
-            
-            // Background track (dark)
-            g2.setColor(new Color(40, 40, 40));
-            g2.fillRoundRect(trackRect.x, cy, cw, ch, ch, ch);
-            
-            // Gradient fill for played portion
-            int filled = (int) (cw * (slider.getValue() / 1000.0));
-            GradientPaint gp = new GradientPaint(
-                trackRect.x, cy, new Color(30, 215, 96),
-                trackRect.x + filled, cy, new Color(0, 180, 70)
-            );
-            g2.setPaint(gp);
-            g2.fillRoundRect(trackRect.x, cy, filled, ch, ch, ch);
-        }
+        // ==== bottom bar ====
+        JPanel bottom = new JPanel(new BorderLayout());
+        bottom.setOpaque(false);
+        bottom.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16));
 
-        @Override
-        public void paintThumb(Graphics g) {
-            Graphics2D g2 = (Graphics2D) g;
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            int size = 18;
-            int x = thumbRect.x + (thumbRect.width - size) / 2;
-            int y = thumbRect.y + (thumbRect.height - size) / 2;
-            
-            // Gradient thumb
-            GradientPaint thumbGradient = new GradientPaint(
-                x, y, new Color(30, 215, 96),
-                x + size, y + size, new Color(0, 180, 70)
-            );
-            g2.setPaint(thumbGradient);
-            g2.fillOval(x, y, size, size);
-            
-            // Glow effect
-            g2.setColor(new Color(30, 215, 96, 100));
-            g2.setStroke(new BasicStroke(2f));
-            g2.drawOval(x - 2, y - 2, size + 4, size + 4);
-        }
-    });
+        // ==== control buttons ====
+        // increase the vertical gap so the icons sit lower and align with the center area
+        JPanel controls = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 30));
+        controls.setOpaque(false);
 
-    // Timer display labels for current and total time
-    currentTimeLabel = new JLabel("0:00");
-    currentTimeLabel.setForeground(new Color(200, 200, 200));
-    currentTimeLabel.setFont(fPlain(14f));
-    currentTimeLabel.setPreferredSize(new Dimension(60, 24));
-    currentTimeLabel.setHorizontalAlignment(SwingConstants.RIGHT);
-    currentTimeLabel.setVerticalAlignment(SwingConstants.CENTER);
-    
-    totalTimeLabel = new JLabel("0:00");
-    totalTimeLabel.setForeground(new Color(150, 150, 150));
-    totalTimeLabel.setFont(fPlain(14f));
-    totalTimeLabel.setPreferredSize(new Dimension(60, 24));
-    totalTimeLabel.setHorizontalAlignment(SwingConstants.LEFT);
-    totalTimeLabel.setVerticalAlignment(SwingConstants.CENTER);
+        prevBtn = createControlButton(ControlButton.Type.PREV);
+        playBtn = createControlButton(ControlButton.Type.PLAY_PAUSE);
+        stopBtn = createControlButton(ControlButton.Type.STOP);
+        nextBtn = createControlButton(ControlButton.Type.NEXT);
+        backBtn = createControlButton(ControlButton.Type.BACK);
 
-    // ==== progress bar container with timer ====
-    JPanel progressContainer = new JPanel();
-    progressContainer.setLayout(new BorderLayout(16, 0));
-    progressContainer.setOpaque(false);
-    progressContainer.setPreferredSize(new Dimension(550, 40));
-    progressContainer.add(currentTimeLabel, BorderLayout.WEST);
-    progressContainer.add(progressSlider, BorderLayout.CENTER);
-    progressContainer.add(totalTimeLabel, BorderLayout.EAST);
-    progressContainer.setBorder(BorderFactory.createEmptyBorder(8, 0, 8, 0));
+        controls.add(prevBtn);
+        controls.add(playBtn);
+        controls.add(stopBtn);
+        controls.add(nextBtn);
+        controls.add(backBtn);
 
-    // ==== fixed alignment ====
-    JPanel centerPanel = new JPanel(new BorderLayout());
-centerPanel.setOpaque(false);
+        // ==== center section ====
+        nowPlayingLabel = new JLabel("Now playing: -");
+        nowPlayingLabel.setForeground(Color.WHITE);
+        // use FontV2 if available for Now playing text
+        if (musicFont != null) nowPlayingLabel.setFont(musicFont.deriveFont(Font.PLAIN, 18f));
+        else nowPlayingLabel.setFont(fPlain(18f));
+        nowPlayingLabel.setPreferredSize(new Dimension(500, 36));
+        nowPlayingLabel.setMaximumSize(new Dimension(Short.MAX_VALUE, 36));
+        nowPlayingLabel.setHorizontalAlignment(SwingConstants.LEFT);
+        nowPlayingLabel.setVerticalAlignment(SwingConstants.CENTER);
+        nowPlayingLabel.setToolTipText("Currently playing song");
+
+        volLabel = new JLabel("Vol");
+        volLabel.setForeground(Color.WHITE);
+        // use FontV2 for the volume label if available
+        if (musicFont != null) volLabel.setFont(musicFont.deriveFont(Font.PLAIN, 18f));
+        else volLabel.setFont(fPlain(18f));
+
+        volumeSlider = new JSlider(0, 100, 80);
+        volumeSlider.setPreferredSize(new Dimension(150, 22));
+        volumeSlider.setMaximumSize(new Dimension(150, 22));
+        volumeSlider.setMinimumSize(new Dimension(150, 22));
+        volumeSlider.setOpaque(false);
+
+        // ==== glowing slider ====
+        final boolean[] hovering = {false};
+        volumeSlider.addMouseListener(new MouseAdapter() {
+            @Override public void mouseEntered(MouseEvent e) { hovering[0] = true; volumeSlider.repaint(); }
+            @Override public void mouseExited(MouseEvent e) { hovering[0] = false; volumeSlider.repaint(); }
+        });
+
+        volumeSlider.setUI(new BasicSliderUI(volumeSlider) {
+            @Override
+            public void paintTrack(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g;
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                int cy = trackRect.y + (trackRect.height / 2) - 3;
+                int cw = trackRect.width;
+                int ch = 8;
+                g2.setColor(new Color(40, 40, 40));
+                g2.fillRoundRect(trackRect.x, cy, cw, ch, ch, ch);
+                int filled = (int) (cw * (slider.getValue() / 100.0));
+                Color fill = hovering[0] ? new Color(40, 255, 120) : new Color(30, 215, 96);
+                g2.setColor(fill);
+                g2.fillRoundRect(trackRect.x, cy, filled, ch, ch, ch);
+            }
+
+            @Override
+            public void paintThumb(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g;
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                int size = 16;
+                int x = thumbRect.x + (thumbRect.width - size) / 2;
+                int y = thumbRect.y + (thumbRect.height - size) / 2;
+                Color c = hovering[0] ? new Color(40, 255, 120) : new Color(30, 215, 96);
+                g2.setColor(c);
+                g2.fillOval(x, y, size, size);
+            }
+        });
+
+        volumeSlider.addChangeListener((ChangeEvent e) -> updateVolume());
+
+        // ====== progress / seek slider (centered) ======
+        progressSlider = new JSlider(0, 1000, 0); // use 0..1000 for smoothness
+        progressSlider.setPreferredSize(new Dimension(400, 8)); // Much smaller, just the track
+        progressSlider.setMaximumSize(new Dimension(400, 8));
+        progressSlider.setOpaque(false);
+        progressSlider.setFocusable(false);
+        progressSlider.setBorder(null); // Remove any border
+
+        // user interaction: mark seeking on press, perform seek on release
+        progressSlider.addMouseListener(new MouseAdapter() {
+            @Override public void mousePressed(MouseEvent e) { seekingProgress = true; }
+            @Override public void mouseReleased(MouseEvent e) {
+                seekingProgress = false;
+                int val = progressSlider.getValue();
+                if (isMp3Mode && mp3TotalMicros > 0) {
+                    long newPos = (long) ((val / 1000.0) * mp3TotalMicros);
+                    mp3SeekTo(newPos);
+                } else if (clip != null && clip.isOpen() && clip.getMicrosecondLength() > 0) {
+                    long newPos = (long) ((val / 1000.0) * clip.getMicrosecondLength());
+                    try { clip.setMicrosecondPosition(newPos); } catch (Exception ignored) {}
+                }
+            }
+        });
+
+        progressSlider.addChangeListener((ChangeEvent e) -> {
+            if (seekingProgress) {
+                int v = progressSlider.getValue();
+                if (isMp3Mode && mp3TotalMicros > 0) {
+                    long len = mp3TotalMicros;
+                    long pos = (long) ((v / 1000.0) * len);
+                    progressSlider.setToolTipText(formatTime(pos) + " / " + formatTime(len));
+                } else if (clip != null && clip.isOpen() && clip.getMicrosecondLength() > 0) {
+                    long len = clip.getMicrosecondLength();
+                    long pos = (long) ((v / 1000.0) * len);
+                    progressSlider.setToolTipText(formatTime(pos) + " / " + formatTime(len));
+                }
+            }
+        });
+
+        // Custom UI for the progress slider with gradient and modern look
+        progressSlider.setUI(new BasicSliderUI(progressSlider) {
+            @Override
+            public void paintTrack(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g;
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                int cy = trackRect.y + (trackRect.height / 2) - 4;
+                int cw = trackRect.width;
+                int ch = 8;
+
+                // Background track (dark)
+                g2.setColor(new Color(40, 40, 40));
+                g2.fillRoundRect(trackRect.x, cy, cw, ch, ch, ch);
+
+                // Gradient fill for played portion
+                int filled = (int) (cw * (slider.getValue() / 1000.0));
+                GradientPaint gp = new GradientPaint(
+                        trackRect.x, cy, new Color(30, 215, 96),
+                        trackRect.x + filled, cy, new Color(0, 180, 70)
+                );
+                g2.setPaint(gp);
+                g2.fillRoundRect(trackRect.x, cy, filled, ch, ch, ch);
+            }
+
+            @Override
+            public void paintThumb(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g;
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                int size = 18;
+                int x = thumbRect.x + (thumbRect.width - size) / 2;
+                int y = thumbRect.y + (thumbRect.height - size) / 2;
+
+                // Gradient thumb
+                GradientPaint thumbGradient = new GradientPaint(
+                        x, y, new Color(30, 215, 96),
+                        x + size, y + size, new Color(0, 180, 70)
+                );
+                g2.setPaint(thumbGradient);
+                g2.fillOval(x, y, size, size);
+
+                // Glow effect
+                g2.setColor(new Color(30, 215, 96, 100));
+                g2.setStroke(new BasicStroke(2f));
+                g2.drawOval(x - 2, y - 2, size + 4, size + 4);
+            }
+        });
+
+        // Timer display labels for current and total time
+        currentTimeLabel = new JLabel("0:00");
+        currentTimeLabel.setForeground(new Color(200, 200, 200));
+        currentTimeLabel.setFont(fPlain(14f));
+        currentTimeLabel.setPreferredSize(new Dimension(60, 24));
+        currentTimeLabel.setHorizontalAlignment(SwingConstants.RIGHT);
+        currentTimeLabel.setVerticalAlignment(SwingConstants.CENTER);
+
+        totalTimeLabel = new JLabel("0:00");
+        totalTimeLabel.setForeground(new Color(150, 150, 150));
+        totalTimeLabel.setFont(fPlain(14f));
+        totalTimeLabel.setPreferredSize(new Dimension(60, 24));
+        totalTimeLabel.setHorizontalAlignment(SwingConstants.LEFT);
+        totalTimeLabel.setVerticalAlignment(SwingConstants.CENTER);
+
+        // ==== progress bar container with timer ====
+        JPanel progressContainer = new JPanel();
+        progressContainer.setLayout(new BorderLayout(16, 0));
+        progressContainer.setOpaque(false);
+        progressContainer.setPreferredSize(new Dimension(550, 40));
+        progressContainer.add(currentTimeLabel, BorderLayout.WEST);
+        progressContainer.add(progressSlider, BorderLayout.CENTER);
+        progressContainer.add(totalTimeLabel, BorderLayout.EAST);
+        progressContainer.setBorder(BorderFactory.createEmptyBorder(8, 0, 8, 0));
+
+        // ==== fixed alignment ====
+        JPanel centerPanel = new JPanel(new BorderLayout());
+        centerPanel.setOpaque(false);
 
 // "Now playing" – lower it slightly so it centers with the controls and volume box
-JPanel leftInfo = new JPanel(new FlowLayout(FlowLayout.LEFT, 20, 34)); // increased vgap to move text lower
-leftInfo.setOpaque(false);
-leftInfo.add(nowPlayingLabel);
+        JPanel leftInfo = new JPanel(new FlowLayout(FlowLayout.LEFT, 20, 34)); // increased vgap to move text lower
+        leftInfo.setOpaque(false);
+        leftInfo.add(nowPlayingLabel);
 
 // "Vol" și slider – la același nivel
 // increase vgap by 6px so the volume box sits slightly lower
-JPanel rightInfo = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 28)); // was 22, then 26
-rightInfo.setOpaque(false);
+        JPanel rightInfo = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 28)); // was 22, then 26
+        rightInfo.setOpaque(false);
 // add a bit of right padding so the volume box sits slightly left from the edge
 // nudged: reduced to 15px (3px to the right from previous 18px)
-rightInfo.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 15));
+        rightInfo.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 15));
 
 // Put the Vol label and slider inside a gray box with padding and subtle border
-JPanel volBox = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 6));
-volBox.setOpaque(true);
-volBox.setBackground(new Color(70, 70, 70)); // gray box
-volBox.setBorder(BorderFactory.createCompoundBorder(
-    BorderFactory.createLineBorder(new Color(90, 90, 90)),
-    BorderFactory.createEmptyBorder(6, 8, 6, 8)
-));
-volBox.add(volLabel);
-volBox.add(volumeSlider);
+        JPanel volBox = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 6));
+        volBox.setOpaque(true);
+        volBox.setBackground(new Color(70, 70, 70)); // gray box
+        volBox.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(90, 90, 90)),
+                BorderFactory.createEmptyBorder(6, 8, 6, 8)
+        ));
+        volBox.add(volLabel);
+        volBox.add(volumeSlider);
 
-rightInfo.add(volBox);
+        rightInfo.add(volBox);
 
-centerPanel.add(leftInfo, BorderLayout.CENTER);
-centerPanel.add(rightInfo, BorderLayout.EAST);
+        centerPanel.add(leftInfo, BorderLayout.CENTER);
+        centerPanel.add(rightInfo, BorderLayout.EAST);
 
-    // Add resize listener to update "Now playing" label when window size changes
-    centerPanel.addComponentListener(new java.awt.event.ComponentAdapter() {
-        @Override
-        public void componentResized(java.awt.event.ComponentEvent e) {
-            // Re-update the label when the panel is resized (e.g., fullscreen)
-            if (clip != null && clip.isOpen() && currentFiles != null && currentIndex >= 0) {
-                updateNowPlayingLabel(currentFiles[currentIndex].getName());
+        // Add resize listener to update "Now playing" label when window size changes
+        centerPanel.addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentResized(java.awt.event.ComponentEvent e) {
+                // Re-update the label when the panel is resized (e.g., fullscreen)
+                if (clip != null && clip.isOpen() && currentFiles != null && currentIndex >= 0) {
+                    updateNowPlayingLabel(currentFiles[currentIndex].getName());
+                }
             }
-        }
-    });
+        });
 
-    // add progress/seek bar as its own centered row across the bottom
-    JPanel seekWrap = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 6));
-    seekWrap.setOpaque(false);
-    seekWrap.add(progressContainer);
+        // add progress/seek bar as its own centered row across the bottom
+        JPanel seekWrap = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 6));
+        seekWrap.setOpaque(false);
+        seekWrap.add(progressContainer);
 
-    // assemble bottom: controls left, center info in center, progress centered at bottom
-    bottom.add(controls, BorderLayout.WEST);
-    bottom.add(centerPanel, BorderLayout.CENTER);
-    bottom.add(seekWrap, BorderLayout.SOUTH);
+        // assemble bottom: controls left, center info in center, progress centered at bottom
+        bottom.add(controls, BorderLayout.WEST);
+        bottom.add(centerPanel, BorderLayout.CENTER);
+        bottom.add(seekWrap, BorderLayout.SOUTH);
 
-    // ==== assemble ====
-    musicPanel.add(titleLabel, BorderLayout.NORTH);
-    musicPanel.add(songListPanel, BorderLayout.CENTER);
-    musicPanel.add(bottom, BorderLayout.SOUTH);
+        // ==== assemble ====
+        musicPanel.add(titleLabel, BorderLayout.NORTH);
+        musicPanel.add(songListPanel, BorderLayout.CENTER);
+        musicPanel.add(bottom, BorderLayout.SOUTH);
 
-    // ==== actions ====
-    prevBtn.addActionListener(e -> { playClickSound(); playPrevious(); });
-    nextBtn.addActionListener(e -> { playClickSound(); playNext(); });
-    stopBtn.addActionListener(e -> { playClickSound(); stopMusic(); });
-    backBtn.addActionListener(e -> {
-        playClickSound();
-        stopMusic();
-        animateBackTransition();
-    });
-    playBtn.addActionListener(e -> {
-        playClickSound();
-        if (clip == null && !isMp3Mode) playSelectedFromList();
-        else pauseOrResume();
-        playBtn.setIcon(loadButtonIcon(ControlButton.Type.PLAY_PAUSE));
-    });
-    
-    // Add resize listener to make all elements responsive
-    musicPanel.addComponentListener(new java.awt.event.ComponentAdapter() {
-        @Override
-        public void componentResized(java.awt.event.ComponentEvent e) {
-            updateMusicPanelSizes();
-        }
-    });
-}
+        // ==== actions ====
+        prevBtn.addActionListener(e -> { playClickSound(); playPrevious(); });
+        nextBtn.addActionListener(e -> { playClickSound(); playNext(); });
+        stopBtn.addActionListener(e -> { playClickSound(); stopMusic(); });
+        backBtn.addActionListener(e -> {
+            playClickSound();
+            stopMusic();
+            animateBackTransition();
+        });
+        playBtn.addActionListener(e -> {
+            playClickSound();
+            if (clip == null && !isMp3Mode) playSelectedFromList();
+            else pauseOrResume();
+            playBtn.setIcon(loadButtonIcon(ControlButton.Type.PLAY_PAUSE));
+        });
+
+        // Add resize listener to make all elements responsive
+        musicPanel.addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentResized(java.awt.event.ComponentEvent e) {
+                updateMusicPanelSizes();
+            }
+        });
+    }
 
 
     // ================= CONTROL BUTTONS =================
@@ -746,7 +746,7 @@ centerPanel.add(rightInfo, BorderLayout.EAST);
         btn.setContentAreaFilled(false);
         btn.setFocusPainted(false);
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        
+
         // Add mouse listener to trigger animation on press
         btn.addMouseListener(new MouseAdapter() {
             @Override
@@ -754,7 +754,7 @@ centerPanel.add(rightInfo, BorderLayout.EAST);
                 btn.animatePress();
             }
         });
-        
+
         return btn;
     }
 
@@ -867,10 +867,10 @@ centerPanel.add(rightInfo, BorderLayout.EAST);
 
         File folder = new File(MUSIC_PATH + mood);
         if (folder.exists() && folder.isDirectory()) {
-                File[] files = folder.listFiles((d, n) -> {
-                    String ln = n.toLowerCase();
-                    return ln.endsWith(".wav") || ln.endsWith(".mp3");
-                });
+            File[] files = folder.listFiles((d, n) -> {
+                String ln = n.toLowerCase();
+                return ln.endsWith(".wav") || ln.endsWith(".mp3");
+            });
             if (files != null && files.length > 0) {
                 currentFiles = files;
                 for (File f : files) {
@@ -897,7 +897,7 @@ centerPanel.add(rightInfo, BorderLayout.EAST);
         musicPanel.setAlpha(0f);
         songListPanel.setAlpha(0f);
         cardLayout.show(mainPanel, "music");
-        
+
         Timer transitionTimer = new Timer(25, null);
         transitionTimer.addActionListener(e -> {
             float alpha = musicPanel.getAlpha();
@@ -970,7 +970,7 @@ centerPanel.add(rightInfo, BorderLayout.EAST);
         if (currentFiles == null || currentIndex < 0 || currentIndex >= currentFiles.length) return;
         File audioFile = currentFiles[currentIndex];
         String name = audioFile.getName().toLowerCase();
-        
+
         if (name.endsWith(".mp3")) {
             playMp3File(audioFile);
         } else {
@@ -1026,7 +1026,7 @@ centerPanel.add(rightInfo, BorderLayout.EAST);
             }
             return;
         }
-        
+
         if (clip == null) return;
 
         if (!isPaused && clip.isRunning()) {
@@ -1053,7 +1053,7 @@ centerPanel.add(rightInfo, BorderLayout.EAST);
             clip = null;
         }
     }
-    
+
     private void stopMp3Only() {
         if (mp3Thread != null) {
             mp3StopRequested = true;
@@ -1067,13 +1067,13 @@ centerPanel.add(rightInfo, BorderLayout.EAST);
         }
         isMp3Mode = false;
     }
-    
+
     private void stopAllPlayback() {
         stopClipOnly();
         stopMp3Only();
         resetProgress();
     }
-    
+
     // ensure progress timer is stopped and UI reset when clip is stopped
     private void resetProgress() {
         stopProgressTimer();
@@ -1130,7 +1130,7 @@ centerPanel.add(rightInfo, BorderLayout.EAST);
             progressSlider.setToolTipText(formatTime(pos) + " / " + formatTime(len));
             return;
         }
-        
+
         if (clip == null || !clip.isOpen()) {
             progressSlider.setValue(0);
             return;
@@ -1161,7 +1161,7 @@ centerPanel.add(rightInfo, BorderLayout.EAST);
     }
 
     // ================= MP3 PLAYBACK =================
-    
+
     private void playMp3File(File file) {
         try {
             stopAllPlayback();
@@ -1297,12 +1297,12 @@ centerPanel.add(rightInfo, BorderLayout.EAST);
 
     private void updateVolume() {
         if (volumeControl == null) return;
-        
+
         // Convert linear slider (0-100) to logarithmic gain for better perceived volume control
         float sliderVal = volumeSlider.getValue() / 100f;
         float min = volumeControl.getMinimum();
         float max = volumeControl.getMaximum();
-        
+
         // Logarithmic scale: 0 slider = min, 1 slider = max
         // Using power function for smoother progression
         float logVal = (float) Math.pow(sliderVal, 0.7f); // 0.7 gives better low-end control
@@ -1323,10 +1323,10 @@ centerPanel.add(rightInfo, BorderLayout.EAST);
         // Remove file extension from display
         int dotIndex = fileName.lastIndexOf('.');
         String displayFileName = (dotIndex > 0) ? fileName.substring(0, dotIndex) : fileName;
-        
+
         // Get the actual rendered font metrics for accurate calculation
         FontMetrics fm = nowPlayingLabel.getFontMetrics(nowPlayingLabel.getFont());
-        
+
         // Calculate available width for the label based on its parent container.
         // Use the parent width (left info area) so the text shortens automatically
         // when the volume box / right area takes more space.
@@ -1341,14 +1341,14 @@ centerPanel.add(rightInfo, BorderLayout.EAST);
         String prefix = "Now playing: ";
         int prefixWidth = fm.stringWidth(prefix);
         int remainingWidth = availableWidth - prefixWidth - 20; // 20px margin
-        
+
         // Find the maximum characters that fit (without extension)
         String shortened = displayFileName;
         if (fm.stringWidth(displayFileName) > remainingWidth) {
             String ellipsis = "...";
             int ellipsisWidth = fm.stringWidth(ellipsis);
             int baseWidth = remainingWidth - ellipsisWidth;
-            
+
             // Binary search for the right length
             int maxBaseChars = displayFileName.length();
             for (int i = displayFileName.length(); i > 0; i--) {
@@ -1359,7 +1359,7 @@ centerPanel.add(rightInfo, BorderLayout.EAST);
             }
             shortened = displayFileName.substring(0, Math.max(1, maxBaseChars)) + ellipsis;
         }
-        
+
         String displayText = prefix + shortened;
         nowPlayingLabel.setText(displayText);
         nowPlayingLabel.setToolTipText(displayFileName); // Full name without extension in tooltip
@@ -1368,34 +1368,34 @@ centerPanel.add(rightInfo, BorderLayout.EAST);
     private void updateMusicPanelSizes() {
         int panelWidth = musicPanel.getWidth();
         int panelHeight = musicPanel.getHeight();
-        
+
         if (panelWidth <= 0 || panelHeight <= 0) return; // Not initialized yet
-        
+
         // Calculate responsive sizes based on panel dimensions
         float widthScale = panelWidth / 1000f; // Base width 1000
         float heightScale = panelHeight / 600f; // Base height 600
         float scale = Math.min(widthScale, heightScale);
-        
+
         // Update title font size
         if (titleLabel != null) {
             float titleSize = Math.max(24f, Math.min(48f, 48f * scale));
             titleLabel.setFont(fBold(titleSize));
         }
-        
+
         // Update volume label font size
         if (volLabel != null) {
             float volSize = Math.max(12f, Math.min(18f, 18f * scale));
             if (musicFont != null) volLabel.setFont(musicFont.deriveFont(Font.PLAIN, volSize));
             else volLabel.setFont(fPlain(volSize));
         }
-        
+
         // Update song list font
         if (songList != null) {
             float listFontSize = Math.max(14f, Math.min(22f, 22f * scale));
             if (musicFont != null) songList.setFont(musicFont.deriveFont(Font.PLAIN, listFontSize));
             else songList.setFont(fPlain(listFontSize));
         }
-        
+
         // Update control button sizes
         int buttonSize = (int) Math.max(30, Math.min(50, 50 * scale));
         int iconSize = (int) Math.max(20, Math.min(32, 32 * scale));
@@ -1404,19 +1404,19 @@ centerPanel.add(rightInfo, BorderLayout.EAST);
         if (stopBtn != null) updateControlButtonSize(stopBtn, buttonSize, iconSize);
         if (nextBtn != null) updateControlButtonSize(nextBtn, buttonSize, iconSize);
         if (backBtn != null) updateControlButtonSize(backBtn, buttonSize, iconSize);
-        
+
         // Update now playing label font
         if (nowPlayingLabel != null) {
             float labelSize = Math.max(12f, Math.min(18f, 18f * scale));
             if (musicFont != null) nowPlayingLabel.setFont(musicFont.deriveFont(Font.PLAIN, labelSize));
             else nowPlayingLabel.setFont(fPlain(labelSize));
-            
+
             // Re-update the label text with new size
             if (clip != null && clip.isOpen() && currentFiles != null && currentIndex >= 0) {
                 updateNowPlayingLabel(currentFiles[currentIndex].getName());
             }
         }
-        
+
         // Update volume slider size
         if (volumeSlider != null) {
             int sliderWidth = (int) Math.max(100, Math.min(150, 150 * scale));
@@ -1424,25 +1424,25 @@ centerPanel.add(rightInfo, BorderLayout.EAST);
             volumeSlider.setMaximumSize(new Dimension(sliderWidth, 22));
             volumeSlider.setMinimumSize(new Dimension(sliderWidth, 22));
         }
-        
+
         // Update progress slider size
         if (progressSlider != null) {
             int progressWidth = (int) Math.max(250, Math.min(400, 400 * scale));
             progressSlider.setPreferredSize(new Dimension(progressWidth, 8));
             progressSlider.setMaximumSize(new Dimension(progressWidth, 8));
         }
-        
+
         // Update time labels
         if (currentTimeLabel != null && totalTimeLabel != null) {
             float timeSize = Math.max(10f, Math.min(14f, 14f * scale));
             currentTimeLabel.setFont(fPlain(timeSize));
             totalTimeLabel.setFont(fPlain(timeSize));
         }
-        
+
         musicPanel.revalidate();
         musicPanel.repaint();
     }
-    
+
     private void updateControlButtonSize(ControlButton btn, int size, int iconSize) {
         btn.setPreferredSize(new Dimension(size, size));
         // Reload icon with new size
@@ -1452,12 +1452,12 @@ centerPanel.add(rightInfo, BorderLayout.EAST);
         else if (btn == stopBtn) type = ControlButton.Type.STOP;
         else if (btn == nextBtn) type = ControlButton.Type.NEXT;
         else if (btn == backBtn) type = ControlButton.Type.BACK;
-        
+
         if (type != null) {
             btn.setIcon(loadButtonIconWithSize(type, iconSize));
         }
     }
-    
+
     private ImageIcon loadButtonIconWithSize(ControlButton.Type type, int size) {
         String file;
         switch (type) {
@@ -1476,5 +1476,4 @@ centerPanel.add(rightInfo, BorderLayout.EAST);
                 .getScaledInstance(size, size, Image.SCALE_SMOOTH);
         return new ImageIcon(img);
     }
-
 }
